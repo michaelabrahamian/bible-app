@@ -1,98 +1,130 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * Home Screen - Book List
+ *
+ * Simple list of all Bible books
+ */
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useBible } from "@/contexts/bible-context";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { router } from "expo-router";
+import { ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const {
+    getBooks,
+    setCurrentBook,
+    getCurrentBookName,
+    currentChapter,
+    primaryVersion,
+  } = useBible();
+  const borderColor = useThemeColor({}, "tabIconDefault");
+  const tintColor = useThemeColor({}, "tint");
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+  const books = getBooks();
+
+  const handleBookSelect = (bookIndex: number) => {
+    setCurrentBook(bookIndex);
+    router.push("/reader");
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.header}>
+        <ThemedText type="title">Bible</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          {books.length} Books Available
         </ThemedText>
+        {primaryVersion === "armenian" && (
+          <ThemedText style={styles.subtitle}>
+            Genesis, Exodus, Matthew, Mark, Luke and John only.
+          </ThemedText>
+        )}
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <TouchableOpacity
+          style={[styles.bookCard, { borderColor }]}
+          accessibilityRole="button"
+          accessibilityLabel={`Continue reading ${getCurrentBookName()} chapter ${currentChapter}`}
+          onPress={() => router.push("/reader")}
+        >
+          <IconSymbol name="book.fill" size={32} color={tintColor} />
+          <ThemedView style={styles.bookInfo}>
+            <ThemedText type="defaultSemiBold" style={styles.bookName}>
+              Continue reading
+            </ThemedText>
+            <ThemedText style={styles.bookDetails}>
+              {getCurrentBookName()} {currentChapter}
+            </ThemedText>
+          </ThemedView>
+          <IconSymbol name="chevron.right" size={20} color={borderColor} />
+        </TouchableOpacity>
+        {books.map((book, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[styles.bookCard, { borderColor }]}
+            onPress={() => handleBookSelect(index)}
+          >
+            <IconSymbol name="book" size={32} color={tintColor} />
+            <ThemedView style={styles.bookInfo}>
+              <ThemedText type="defaultSemiBold" style={styles.bookName}>
+                {book.name}
+              </ThemedText>
+              <ThemedText style={styles.bookDetails}>
+                {book.chapters.length}{" "}
+                {book.chapters.length === 1 ? "chapter" : "chapters"}
+              </ThemedText>
+            </ThemedView>
+            <IconSymbol name="chevron.right" size={20} color={borderColor} />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    padding: 20,
+    paddingBottom: 12,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  subtitle: {
+    marginTop: 8,
+    opacity: 0.7,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  bookCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  bookInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  bookName: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  bookDetails: {
+    fontSize: 14,
+    opacity: 0.6,
   },
 });

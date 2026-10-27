@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/scrollmapper/bible_databases",
+  "revision": "ba07bc991644d82b24426b920245eb4422daa769",
+  "verifiedOn": "2026-10-27",
+  "files": [
+    {
+      "file": "KJV.json",
+      "url": "https://raw.githubusercontent.com/scrollmapper/bible_databases/ba07bc991644d82b24426b920245eb4422daa769/formats/json/KJV.json",
+      "sha256": "42f438d6210ee64a84382873272c28cb4a7d2ffd45bb19207a517dba3a2a86cb",
+      "moduleRightsRecord": "https://www.crosswire.org/sword/copyright/ModInfoCopyright.jsp?modName=KJV",
+      "moduleDistributionLicense": "GPL"
+    },
+    {
+      "file": "ArmEastern.json",
+      "url": "https://raw.githubusercontent.com/scrollmapper/bible_databases/ba07bc991644d82b24426b920245eb4422daa769/formats/json/ArmEastern.json",
+      "sha256": "6c423ccf5f699508ed7d1746f1bd2501ac7363a44dbc9ef6b245c5a1449de9f5",
+      "moduleRightsRecord": "https://www.crosswire.org/sword/copyright/ModInfoCopyright.jsp?modName=ArmEastern",
+      "moduleDistributionLicense": "Public Domain"
+    }
+  ]
+}

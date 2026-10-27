@@ -1,50 +1,62 @@
-# Welcome to your Expo app 👋
+# Bible App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An offline English/Armenian Bible reader built with Expo, React Native, Expo Router, and TypeScript. It supports book/chapter navigation, side-by-side reading, automatic light/dark themes, and saved translation preferences and reading position.
 
-## Get started
+## Setup
 
-1. Install dependencies
+The project uses **Expo SDK 58, React Native 0.88, and React 19.3**.
 
-   ```bash
-   npm install
-   ```
+Use Node.js **24.18.0** (`.node-version`) and npm. With fnm:
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```sh
+fnm use
+npm ci
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Use `npm run ios`, `npm run android`, or `npm run web` to open a development target. Native compilation requires the Xcode/Android toolchain supported by Expo SDK 58 (including iOS 16.4+ support). Rebuild native development clients after SDK/native dependency changes. Home-screen widgets are not implemented yet; future widget work requires a development build, not Expo Go.
 
-## Learn more
+## Checks
 
-To learn more about developing your project with Expo, look at the following resources:
+```sh
+npm run check
+npm run data:audit
+npx expo install --check
+npx expo-doctor
+npx expo export --platform web
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+`check` runs TypeScript, lint, and tests. `data:audit` checks the structure of both bundled datasets and reports unavailable Armenian placeholders separately. A successful app build does not establish Bible text accuracy or release readiness. See [data/README.md](data/README.md).
 
-## Join the community
+## Current translations
 
-Join our community of developers creating universal apps.
+- **English:** KJV, not NKJV.
+- **Armenian:** the publicly distributed `ArmEastern.json`, containing Genesis, Exodus, Matthew, Mark, Luke, and John only. The app hides empty placeholders and labels this version partial. It is not verified as New Echmiadzin.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Both files match pinned public Scrollmapper downloads byte-for-byte; URLs and hashes are recorded in `data/sources.json`. Scrapers, scraped outputs, and unverified local conversions are excluded from the branch. Public availability does not replace text-specific licence requirements; see [data/README.md](data/README.md).
+
+## Structure
+
+- `app/(tabs)/index.tsx`: book list.
+- `app/(tabs)/explore.tsx`: translation and comparison preferences.
+- `app/reader.tsx`: chapter reader.
+- `contexts/bible-context.tsx`: reading state, validated restoration, and device storage.
+- `services/bible-service.ts`: access to the two bundled translations.
+- `scripts/audit-bible-data.js`: structural content audit.
+- `scripts/`: structural audit and its tests; see [scripts/README.md](scripts/README.md).
+
+The reader navigates actual available chapter numbers rather than assuming every dataset is contiguous. This avoids missing-chapter navigation errors but does not repair the underlying content. Comparing translations matches book names and chapter numbers; it does not guarantee verse alignment across editions.
+
+## Storage
+
+Preferences and reading position are stored locally under `bible-app:reader:v1` using AsyncStorage. Invalid or unreadable stored state falls back to available translations and chapters. Data is not synced between devices. Reopening the reader resumes the saved position; selecting a book starts at its first available chapter.
+
+## Text and code rights
+
+Bible texts have their own rights and attribution requirements. The app is a personal prototype; no application-code licence has been selected. See [data/README.md](data/README.md) for the evidence and unresolved questions for each text.
+
+## Maintenance limitations
+
+The October 2026 upgrade passes type checking, lint, tests, Expo dependency validation, and JavaScript/Hermes exports for iOS, Android, and web. These exports do not compile or launch a native app. Native device/simulator testing still requires full Xcode and an Android SDK.
+
+At the maintenance check, npm audit reports five high-severity findings inherited through Expo CLI, involving node-forge and its Zod 3 dependency. The registry has no patched node-forge release, and Expo CLI requires Zod 3. Do not force a framework downgrade or a Zod major override to silence the report. Recheck when Expo publishes compatible fixes.
