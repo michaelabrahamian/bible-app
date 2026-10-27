@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-27 — Reading UI refresh
+
+- Introduce warm paper and deep green themes with matching dark mode and navigation.
+- Add a passage preview to Continue reading and book-name search to the library.
+- Simplify translation selection and parallel-reading settings while retaining content notices.
+- Use larger serif reading text and configurable Side by side or Stacked comparison at all screen sizes.
+- Save eight themes (Forest, Ocean, Clay, Plum, White, Cream, Black, Grey) and System/Light/Dark appearance.
+- Add the public-domain World English Bible British edition as a third text, preserving publisher references and blank entries.
+- Provide independent translation selectors in Settings and reader headers.
+- Align numeric verse pairs with equal row heights and shared scrolling in side-by-side mode; add a saved reader layout menu including primary-only and secondary-only reading without swapping translations.
+- Add repo and in-app text licensing notes; document New Etchmiadzin's unresolved rights and four English candidates without bundling those English texts.
+- Preserve saved reading state and chapter scroll resets.
+- Replace ArmEastern with the pinned New Etchmiadzin GitHub copy; migrate saved book identities. Withhold uncertain Psalms and disclose missing books and reference limitations.
+- Track licensed NKJV API integration in GitHub issue #2.
+
 ## 2026-10-27 — Review fixes
 
 - Withhold 17 partly populated Armenian chapters with missing text and potentially shifted references; preserve public source files unchanged.

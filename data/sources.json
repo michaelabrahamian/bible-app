@@ -1,6 +1,4 @@
 {
-  "repository": "https://github.com/scrollmapper/bible_databases",
-  "revision": "ba07bc991644d82b24426b920245eb4422daa769",
   "verifiedOn": "2026-10-27",
   "files": [
     {
@@ -11,11 +9,33 @@
       "moduleDistributionLicense": "GPL"
     },
     {
-      "file": "ArmEastern.json",
-      "url": "https://raw.githubusercontent.com/scrollmapper/bible_databases/ba07bc991644d82b24426b920245eb4422daa769/formats/json/ArmEastern.json",
-      "sha256": "6c423ccf5f699508ed7d1746f1bd2501ac7363a44dbc9ef6b245c5a1449de9f5",
-      "moduleRightsRecord": "https://www.crosswire.org/sword/copyright/ModInfoCopyright.jsp?modName=ArmEastern",
-      "moduleDistributionLicense": "Public Domain"
+      "file": "WEB.json",
+      "edition": "World English Bible British Edition, 66-book edition (engwebpb)",
+      "url": "https://ebible.org/Scriptures/engwebpb_vpl.zip",
+      "archiveSha256": "21daef09da766e77bd9b0d63e22389683a596f7e22a6c1d0429b12a163ba08d8",
+      "sourceEntry": "engwebpb_vpl.txt",
+      "sourceEntrySha256": "ca50576d570f1d6facc5b1d091a3c487c4d97e19d7fd7ec4fe71379ed107561a",
+      "sha256": "61d91f4ac45f1133a6efa15bbdcd2baf564250c2d58c102eeee308250e9c05da",
+      "downloadedOn": "2026-10-27",
+      "rightsRecord": "https://ebible.org/Scriptures/details.php?id=engwebpb",
+      "distributionLicense": "Public Domain",
+      "conversion": "node scripts/import-web-vpl.js engwebpb_vpl.txt data/WEB.json",
+      "textPolicy": "Book names normalized for comparison; publisher verse numbers and verse strings preserved unchanged, including explicit blank entries."
+    },
+    {
+      "file": "NEB.json",
+      "edition": "Catalogue label: New Etchmiadzin Bible; exact publisher edition unverified",
+      "url": "https://raw.githubusercontent.com/thiagobodruk/bible/df0860fe0921b5b899d1b554041900ab072cd4c4/json/hy_neb.json",
+      "revision": "df0860fe0921b5b899d1b554041900ab072cd4c4",
+      "sha256": "1fb85acadbac2c7ab76b2a4835b9c5e6f1a29aedadd5b675a7771d757856bdbe",
+      "downloadedOn": "2026-10-27",
+      "repositoryLicense": "MIT; repository expressly reserves Bible owners rights",
+      "publisherPermission": "Not obtained; public distribution not cleared",
+      "textPolicy": "Source bytes preserved. Runtime explicit abbreviation-to-book mapping. Chapter and verse identities use source array positions, not independently verified reference IDs. Psalms withheld: only 149 chapter arrays. Missing Esther, Daniel and deuterocanonical books."
     }
-  ]
+  ],
+  "scrollmapper": {
+    "repository": "https://github.com/scrollmapper/bible_databases",
+    "revision": "ba07bc991644d82b24426b920245eb4422daa769"
+  }
 }
