@@ -5,6 +5,8 @@
  * Supports KJV, WEB and the incomplete New Etchmiadzin GitHub edition.
  */
 
+// New Etchmiadzin source: https://github.com/thiagobodruk/bible (json/hy_neb.json).
+// Pinned revision, hash and rights status: data/sources.json and TEXT_LICENSES.md.
 import nebData from "@/data/NEB.json";
 import kjvData from "@/data/KJV.json";
 import webData from "@/data/WEB.json";
