@@ -49,61 +49,55 @@ export default function TextLicencesScreen() {
           licence does not replace the rights holder’s permission. These notes
           document the sources; they do not grant additional rights.
         </ThemedText>
-        {[true, false].map((included) => (
-          <View key={String(included)} style={styles.section}>
-            <ThemedText accessibilityRole="header" style={styles.sectionTitle}>
-              {included ? "Included texts" : "Candidates · not included"}
-            </ThemedText>
-            {TranslationLicenses.filter(
-              (record) => record.included === included,
-            ).map((record) => (
-              <View
-                key={record.id}
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
+        <View style={styles.section}>
+          <ThemedText accessibilityRole="header" style={styles.sectionTitle}>
+            Bundled texts
+          </ThemedText>
+          {TranslationLicenses.map((record) => (
+            <View
+              key={record.id}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <ThemedText accessibilityRole="header" style={styles.name}>
+                {record.name}
+              </ThemedText>
+              <ThemedText style={[styles.provider, { color: colors.tint }]}>
+                {record.provider}
+              </ThemedText>
+              <ThemedText style={styles.body}>{record.summary}</ThemedText>
+              <ThemedText
+                style={[styles.body, { color: colors.secondaryText }]}
               >
-                <ThemedText accessibilityRole="header" style={styles.name}>
-                  {record.name}
-                </ThemedText>
-                <ThemedText style={[styles.provider, { color: colors.tint }]}>
-                  {record.provider}
-                </ThemedText>
-                <ThemedText style={styles.body}>{record.summary}</ThemedText>
-                <ThemedText
-                  style={[styles.body, { color: colors.secondaryText }]}
+                {record.coverage}
+              </ThemedText>
+              {record.links.map((link) => (
+                <TouchableOpacity
+                  key={link.url}
+                  accessibilityRole="link"
+                  onPress={() => {
+                    void Linking.openURL(link.url).catch(() => {});
+                  }}
+                  style={styles.link}
                 >
-                  {record.coverage}
-                </ThemedText>
-                {record.links.map((link) => (
-                  <TouchableOpacity
-                    key={link.url}
-                    accessibilityRole="link"
-                    onPress={() => {
-                      void Linking.openURL(link.url).catch(() => {});
-                    }}
-                    style={styles.link}
-                  >
-                    <ThemedText
-                      style={[styles.linkText, { color: colors.tint }]}
-                    >
-                      {link.label}
-                    </ThemedText>
-                    <IconSymbol
-                      name="arrow.right"
-                      size={16}
-                      color={colors.tint}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ))}
-          </View>
-        ))}
+                  <ThemedText style={[styles.linkText, { color: colors.tint }]}>
+                    {link.label}
+                  </ThemedText>
+                  <IconSymbol
+                    name="arrow.right"
+                    size={16}
+                    color={colors.tint}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+        </View>
         <ThemedText style={[styles.footer, { color: colors.secondaryText }]}>
           Source and permission records checked 27 October 2026. Terms and
           availability may change.

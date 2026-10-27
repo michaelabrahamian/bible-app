@@ -41,7 +41,7 @@ These findings establish possible access routes, not active integrations. The fo
 
 ## App disclosure and release checks
 
-Settings includes a Bible text licensing note and a **Text sources & licences** page. The page distinguishes the three included texts from the four candidates and links to publisher records. This information is driven by `constants/translation-licenses.ts`.
+Settings includes a Bible text licensing note and a **Text sources & licences** page. The page lists only the three bundled texts and links to their source and publisher records. Future translation research stays in this document and the GitHub backlog. This information is driven by `constants/translation-licenses.ts`.
 
 Before adding a candidate, record the exact source/edition, applicable licence or written grant, attribution, commercial-use and offline/cache conditions, territories, and any expiry/update requirements. Validate references against the authoritative text. Do not treat book counts or a passing structural audit as textual verification.
 

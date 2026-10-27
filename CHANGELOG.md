@@ -10,7 +10,7 @@
 - Add the public-domain World English Bible British edition as a third text, preserving publisher references and blank entries.
 - Provide independent translation selectors in Settings and reader headers.
 - Align numeric verse pairs with equal row heights and shared scrolling in side-by-side mode; add a saved reader layout menu including primary-only and secondary-only reading without swapping translations.
-- Add repo and in-app text licensing notes; document New Etchmiadzin's unresolved rights and four English candidates without bundling those English texts.
+- Add in-app licensing notes for bundled texts only, including New Etchmiadzin's unresolved rights. Keep research on four future English translations in repository docs.
 - Preserve saved reading state and chapter scroll resets.
 - Replace ArmEastern with the pinned New Etchmiadzin GitHub copy; migrate saved book identities. Withhold uncertain Psalms and disclose missing books and reference limitations.
 - Track licensed NKJV API integration in GitHub issue #2.

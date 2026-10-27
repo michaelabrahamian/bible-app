@@ -268,25 +268,12 @@ test("WEB retains correct Luke references and explicit publisher omissions", () 
   );
 });
 
-test("only exposes included texts as reading options and records the four remaining candidates separately", () => {
-  const included = TranslationLicenses.filter(
-    (record: { included: boolean }) => record.included,
-  )
-    .map((record: { id: string }) => record.id)
-    .sort();
-  expect(included).toEqual(
+test("the in-app licence catalogue contains exactly the bundled reading texts", () => {
+  expect(TranslationLicenses.map(({ id }) => id).sort()).toEqual(
     BibleService.getVersions()
       .map(({ id }) => id)
       .sort(),
   );
-  const candidates = TranslationLicenses.filter(
-    (record: { included: boolean }) => !record.included,
-  ).map((record: { id: string }) => record.id);
-  expect(candidates).toEqual(["nkjv", "niv", "nlt", "esv"]);
-  for (const id of candidates)
-    expect(
-      BibleService.getVersions().some((version) => version.id === id),
-    ).toBe(false);
 });
 
 test("persists secondary-only reading without swapping translation roles", async () => {

@@ -55,7 +55,7 @@ Reading preferences, comparison layout and reading position are stored locally u
 
 ## Text and code rights
 
-Bible texts have their own rights and attribution requirements. The app is a personal prototype; no application-code licence has been selected. See [TEXT_LICENSES.md](TEXT_LICENSES.md) for included-text rights, the four remaining candidate translations and publisher permission routes; [data/README.md](data/README.md) records provenance and content limitations. Settings also exposes these notes. NKJV, NIV, NLT and ESV are not bundled. [Issue #2](https://github.com/michaelabrahamian/bible-app/issues/2) tracks licensed NKJV access.
+Bible texts have their own rights and attribution requirements. The app is a personal prototype; no application-code licence has been selected. See [TEXT_LICENSES.md](TEXT_LICENSES.md) for included-text rights, the four remaining candidate translations and publisher permission routes; [data/README.md](data/README.md) records provenance and content limitations. Settings exposes licensing notes for the three bundled texts only. NKJV, NIV, NLT and ESV are not bundled. [Issue #2](https://github.com/michaelabrahamian/bible-app/issues/2) tracks licensed NKJV access.
 
 ## Maintenance limitations
 
