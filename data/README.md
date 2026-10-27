@@ -1,48 +1,35 @@
-# Bible text sources and status
+# Bible text data
 
-The repository bundles only `KJV.json` and `ArmEastern.json`. On 27 October 2026, both files were verified byte-for-byte against public downloads from Scrollmapper revision `ba07bc991644d82b24426b920245eb4422daa769`. The pinned download URLs and SHA-256 hashes are recorded in [sources.json](sources.json). The files are preserved exactly as distributed.
+The current app bundles KJV, WEB and an incomplete New Etchmiadzin GitHub edition. ArmEastern has been removed from the current tree and app bundle. [sources.json](sources.json) records pinned URLs, revisions and SHA-256 hashes. [TEXT_LICENSES.md](../TEXT_LICENSES.md) records licensing and remaining publisher/provider work.
 
-| File | Coverage | Source and rights record |
+| File | Coverage | Provenance and rights |
 | --- | --- | --- |
-| `KJV.json` | 66 populated books, 1,189 chapters, 31,102 nonempty verse entries. English KJV, not NKJV. | Scrollmapper export of the CrossWire KJV module, whose title includes Strong's numbers, morphology, and catchwords. CrossWire lists the module distribution licence as **GPL**. Do not describe this annotated module as unrestricted merely because the underlying KJV text is old. |
-| `ArmEastern.json` | Genesis, Exodus, Matthew, Mark, Luke, and John only: 6,478 nonempty verse entries. Its 66-book structure contains empty placeholders for the other books. | CrossWire calls it “Eastern Armenian Bible”, records the text source as “Slavic Bible via http://unbound.biola.edu”, and lists its distribution licence as **Public Domain**. Its original translator, publication date, and edition are not identified. |
+| `KJV.json` | 66 books, 1,189 chapters, 31,102 verses. | Unchanged public Scrollmapper export. CrossWire lists the digital module as GPL. Plain KJV US public-domain status does not establish unrestricted worldwide use; UK Crown rights and edition-specific terms need review. |
+| `WEB.json` | British 66-book edition, 1,189 chapters, 31,098 nonempty verses and five explicitly blank publisher entries. | Official eBible.org public-domain download. Exact verse strings and explicit reference IDs preserved. Publisher notice: [WEB-NOTICE.html](WEB-NOTICE.html). |
+| `NEB.json` | 64 source books, 1,165 chapter arrays, 30,572 verse strings. All 27 NT books/260 NT chapters are present. | Unchanged `hy_neb.json` from thiagobodruk/bible at `df0860fe0921b5b899d1b554041900ab072cd4c4`. The repository's MIT licence is preserved in [THIAGOBODRUK-LICENSE](THIAGOBODRUK-LICENSE); its README expressly reserves Bible owners' rights. Exact publisher edition, accuracy and redistribution permission are not verified. Prototype inclusion is not clearance for public release. |
 
-The app uses both datasets. It hides entirely empty Armenian books/chapters and **withholds all 17 partly populated Armenian chapters** without changing the downloaded source file. It does not drop blank verses from a partly populated chapter and present the remainder as reliable. The Armenian selector is labelled partial; it is not a complete Old or New Testament and is not verified as New Echmiadzin.
+## New Etchmiadzin limitations
 
-## Armenian content quarantine
+The [Bible Society of Armenia](https://biblesociety.am/eng/1/Main) describes a New Etchmiadzin edition with 48 Old Testament and 27 New Testament books. The GitHub file lacks Esther, Daniel and those additional canonical books. It must not be described as a complete copy of that publisher's edition.
 
-The public export has incorrect references in some populated chapters. In Luke 1, the entry numbered 47 contains the passage corresponding to verse 56, and the entry numbered 59 contains verse 80; intervening passages are missing. A public download and its hash establish provenance, not correct verse numbering.
+The source supplies arrays without explicit chapter or verse IDs. The service maps book abbreviations explicitly to stable English book identities, preserving every verse string. Displayed chapter and verse numbers follow source array positions; this is a format adaptation, not authoritative reference verification. Numbering can differ between editions, so comparison is by book/chapter and side-by-side verses align by numeric reference in a shared scroll area; stacked panes scroll independently.
 
-The reader withholds every chapter containing both populated and empty verse entries:
+Psalms has only **149 chapter arrays**. Without an authoritative reference mapping, the missing/combined chapter cannot be safely identified. The entire Psalms book is withheld from NEB reading options and shows an explicit withheld message when compared from an English edition. The other 63 books are available; that is not independent verification of their text. Missing books show an unavailable message, never substituted English.
 
-- Genesis: 21, 49.
-- Exodus: 25, 40.
-- Matthew: 12, 16, 17, 23.
-- Mark: 9, 11.
-- Luke: 1, 2, 3, 11.
-- John: 7, 11, 14.
+Saved `armenian` preferences from the removed six-book ArmEastern edition migrate to `neb` by original book name, preserving the chapter when available. They do not reuse the old six-book index in the larger NEB collection.
 
-That leaves 162 readable chapters across the six books. This exclusion is a precaution, not verification of the remaining text. Do not repair missing passages or verse numbers by guessing from the KJV. Restore withheld chapters only from a verified source with correct references.
+## WEB import
 
-When Armenian is primary, navigation lists only readable chapters and restores a saved withheld position to the book's first readable chapter. In comparison mode, unavailable text shows a labelled “not available” message, while quarantined text shows a “withheld” explanation. English remains in its own KJV pane. No missing Armenian content is generated or substituted.
+The official archive is `https://ebible.org/Scriptures/engwebpb_vpl.zip`. Its hash, source entry hash, generated JSON hash and download date are in sources.json. Regenerate with:
 
-## Source and licence records
+```sh
+node scripts/import-web-vpl.js /path/to/engwebpb_vpl.txt data/WEB.json
+```
 
-- [Pinned Scrollmapper snapshot](https://github.com/scrollmapper/bible_databases/tree/ba07bc991644d82b24426b920245eb4422daa769).
-- [Scrollmapper repository licence](https://github.com/scrollmapper/bible_databases/blob/ba07bc991644d82b24426b920245eb4422daa769/LICENSE), included as [SCROLLMAPPER-LICENSE](SCROLLMAPPER-LICENSE).
-- [CrossWire ArmEastern module](https://www.crosswire.org/sword/modules/ModInfo.jsp?modName=ArmEastern) and [rights record](https://www.crosswire.org/sword/copyright/ModInfoCopyright.jsp?modName=ArmEastern).
-- [CrossWire KJV rights record](https://www.crosswire.org/sword/copyright/ModInfoCopyright.jsp?modName=KJV) and [module source](https://gitlab.com/crosswire-bible-society/kjv).
+The importer normalizes book names to existing reader identities, preserves the publisher's explicit verse numbers and strings, and rejects duplicate or invalid references. WEB's five blank entries display “Not included in this edition.”
 
-For the plain KJV wording, US public-domain status does not establish unrestricted worldwide use. [Cambridge's notice](https://assets.cambridge.org/97805211/63347/copyright/9780521163347_copyright_info.pdf) records Crown rights and permission requirements in the United Kingdom. The digital module's licence record is a separate consideration.
+## Audit and notices
 
-Public download availability and a distributor's licence classification do not independently establish the original translation's identity or worldwide app distribution permission. Scrollmapper's repository licence does not replace any text-specific terms. Confirm the applicable notices and licence requirements before distributing the app.
+Run `npm run data:audit`. It checks shape, duplicate identities, malformed entries, empty text and numbering gaps. NEB arrays are adapted for structural inspection; a passing result does not certify reference accuracy, completeness or permission.
 
-## Excluded local research
-
-Scrapers, scraped Bible Society/Classical outputs, logs, and the locally converted `ArmReformed` text and its raw inputs are excluded from this branch's commits. They have no sufficiently recorded source or permission to include here. The original local checkout retains the research files; `.gitignore` prevents accidentally adding them to this branch again.
-
-For a complete modern Eastern Armenian edition, obtain an authoritative structured text and app/offline permission from its rights holder. For New Echmiadzin, the first contact is the Bible Society of Armenia: info@biblesociety.am ([website](https://biblesociety.am/eng/1/Main)).
-
-## Validation
-
-Run `npm run data:audit` for the two bundled datasets, or pass a specific file. The audit checks structure and reports empty ArmEastern placeholders separately from available text. It does not certify canon completeness, verse alignment, textual accuracy, edition identity, or reuse permission.
+[SCROLLMAPPER-LICENSE](SCROLLMAPPER-LICENSE) and [CrossWire's KJV record](https://www.crosswire.org/sword/copyright/ModInfoCopyright.jsp?modName=KJV) document KJV provenance. [Cambridge's notice](https://assets.cambridge.org/97805211/63347/copyright/9780521163347_copyright_info.pdf) documents UK Crown rights. Repository licences do not replace translation-specific terms. Confirm publisher rights, territories and notices before distributing this app.

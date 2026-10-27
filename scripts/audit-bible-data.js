@@ -7,15 +7,27 @@ const { auditBible } = require("./lib/bible-data-audit");
 const requested = process.argv.slice(2);
 const files = requested.length
   ? requested
-  : ["data/KJV.json", "data/ArmEastern.json"];
+  : ["data/KJV.json", "data/NEB.json", "data/WEB.json"];
 let failed = false;
 for (const file of files) {
   try {
-    const data = JSON.parse(
+    let data = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, "..", file), "utf8"),
     );
+    if (path.basename(file) === "NEB.json") {
+      data = {
+        translation: "New Etchmiadzin source arrays",
+        books: data.map((book) => ({
+          name: book.abbrev,
+          chapters: book.chapters.map((verses, index) => ({
+            chapter: index + 1,
+            verses: verses.map((text, index) => ({ verse: index + 1, text })),
+          })),
+        })),
+      };
+    }
     const { stats, issues } = auditBible(data, {
-      allowEmptyVerses: path.basename(file) === "ArmEastern.json",
+      allowEmptyVerses: path.basename(file) === "WEB.json",
     });
     console.log(
       `${file}: ${stats.populatedBooks}/${stats.books} populated books, ${stats.chapters} chapter entries, ${stats.verses} nonempty verse entries, ${stats.emptyVerses} empty slots`,
