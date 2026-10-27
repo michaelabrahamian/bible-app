@@ -110,6 +110,65 @@ test("only offers Armenian books and chapters with available text", () => {
   expect(BibleService.getChapterByName("armenian", "Acts", 1)).toBeNull();
 });
 
+test("withholds partly populated Armenian chapters instead of displaying shifted verse numbers", () => {
+  const withheld: Record<string, number[]> = {
+    Genesis: [21, 49],
+    Exodus: [25, 40],
+    Matthew: [12, 16, 17, 23],
+    Mark: [9, 11],
+    Luke: [1, 2, 3, 11],
+    John: [7, 11, 14],
+  };
+  for (const [book, chapters] of Object.entries(withheld)) {
+    for (const chapter of chapters) {
+      expect(
+        BibleService.getChapterByName("armenian", book, chapter),
+      ).toBeNull();
+      expect(
+        BibleService.getChapterAvailability("armenian", book, chapter),
+      ).toBe("withheld");
+    }
+  }
+  expect(BibleService.getChapterAvailability("armenian", "Acts", 1)).toBe(
+    "missing",
+  );
+  expect(BibleService.getChapterAvailability("armenian", "John", 3)).toBe(
+    "available",
+  );
+  expect(
+    BibleService.getChapterByName("armenian", "John", 3)?.verses.find(
+      ({ verse }) => verse === 16,
+    )?.text,
+  ).toContain("Աստուած այնքան սիրեց աշխարհը");
+});
+
+test("restores reading positions away from withheld chapters and navigates actual remaining chapter numbers", async () => {
+  await AsyncStorage.setItem(
+    READER_STORAGE_KEY,
+    JSON.stringify({
+      primaryVersion: "armenian",
+      secondaryVersion: "kjv",
+      currentBookIndex: 4,
+      currentChapter: 1,
+      showDualView: true,
+    }),
+  );
+  const { result } = await renderHook(useBible, { wrapper: BibleProvider });
+  await waitFor(() => expect(result.current.isReady).toBe(true));
+  expect(result.current.getCurrentBookName()).toBe("Luke");
+  expect(result.current.currentChapter).toBe(4);
+  for (const chapter of [1, 2, 3, 11]) {
+    expect(result.current.getChapterNumbers()).not.toContain(chapter);
+  }
+  expect(result.current.getChapterNumbers()).toHaveLength(20);
+  expect(result.current.getPrimaryChapter()).not.toBeNull();
+  await act(async () => result.current.setCurrentChapter(10));
+  const chapters = result.current.getChapterNumbers();
+  expect(chapters[chapters.indexOf(result.current.currentChapter) + 1]).toBe(
+    12,
+  );
+});
+
 test("validates unavailable versions and reading positions on restoration", async () => {
   await AsyncStorage.setItem(
     READER_STORAGE_KEY,

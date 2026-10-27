@@ -9,7 +9,7 @@ import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBible } from "@/contexts/bible-context";
 import { useThemeColor } from "@/hooks/use-theme-color";
-import type { Chapter } from "@/services/bible-service";
+import { getChapterAvailability, type Chapter } from "@/services/bible-service";
 import { Stack } from "expo-router";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
@@ -46,6 +46,13 @@ export default function ReaderScreen() {
   const previousChapter = chapters[chapterIndex - 1];
   const nextChapter = chapters[chapterIndex + 1];
   const totalChapters = chapters.length;
+  const primaryContentKey = `${primaryVersion}:${bookName}:${currentChapter}`;
+  const secondaryContentKey = `${secondaryVersion}:${bookName}:${currentChapter}`;
+
+  const unavailableMessage = (versionId: string) =>
+    getChapterAvailability(versionId, bookName, currentChapter) === "withheld"
+      ? `${bookName} ${currentChapter} is withheld in this translation because text is missing and verse references may be incorrect.`
+      : `${bookName} ${currentChapter} is not available in this translation.`;
 
   const goToPreviousChapter = () => {
     if (previousChapter !== undefined) setCurrentChapter(previousChapter);
@@ -63,9 +70,14 @@ export default function ReaderScreen() {
           headerRight: () => (
             <TouchableOpacity
               onPress={toggleDualView}
+              disabled={!secondaryVersion}
               accessibilityRole="button"
               accessibilityLabel={
-                showDualView ? "Show one translation" : "Compare translations"
+                !secondaryVersion
+                  ? "Choose a comparison translation in Settings"
+                  : showDualView
+                    ? "Show one translation"
+                    : "Compare translations"
               }
               style={styles.headerButton}
             >
@@ -80,12 +92,14 @@ export default function ReaderScreen() {
       />
 
       <ThemedView style={styles.container}>
-        {showDualView && secondaryChapter ? (
+        {showDualView && secondaryVersion ? (
           <View style={styles.dualViewContainer}>
             <View style={styles.halfView}>
               <ChapterView
+                key={primaryContentKey}
                 chapter={primaryChapter}
                 versionName={primaryVersionName}
+                unavailableMessage={unavailableMessage(primaryVersion)}
               />
             </View>
             <View
@@ -93,16 +107,20 @@ export default function ReaderScreen() {
             />
             <View style={styles.halfView}>
               <ChapterView
+                key={secondaryContentKey}
                 chapter={secondaryChapter}
                 versionName={secondaryVersionName || ""}
+                unavailableMessage={unavailableMessage(secondaryVersion)}
               />
             </View>
           </View>
         ) : (
           <View style={styles.fullView}>
             <ChapterView
+              key={primaryContentKey}
               chapter={primaryChapter}
               versionName={primaryVersionName}
+              unavailableMessage={unavailableMessage(primaryVersion)}
             />
           </View>
         )}
@@ -169,16 +187,23 @@ export default function ReaderScreen() {
 function ChapterView({
   chapter,
   versionName,
+  unavailableMessage,
 }: {
   chapter: Chapter | null;
   versionName: string;
+  unavailableMessage: string;
 }) {
   const borderColor = useThemeColor({}, "tabIconDefault");
 
   if (!chapter) {
     return (
       <ThemedView style={styles.chapterContainer}>
-        <ThemedText style={styles.noContent}>Chapter not available</ThemedText>
+        <ThemedText type="subtitle" style={styles.versionLabel}>
+          {versionName}
+        </ThemedText>
+        <ScrollView style={styles.versesContainer}>
+          <ThemedText style={styles.noContent}>{unavailableMessage}</ThemedText>
+        </ScrollView>
       </ThemedView>
     );
   }

@@ -31,7 +31,7 @@ npx expo export --platform web
 ## Current translations
 
 - **English:** KJV, not NKJV.
-- **Armenian:** the publicly distributed `ArmEastern.json`, containing Genesis, Exodus, Matthew, Mark, Luke, and John only. The app hides empty placeholders and labels this version partial. It is not verified as New Echmiadzin.
+- **Armenian:** the publicly distributed `ArmEastern.json`, containing Genesis, Exodus, Matthew, Mark, Luke, and John only. The app hides empty chapters, withholds 17 partly populated chapters with unreliable references, and labels this version partial. The remaining 162 chapters have not been independently verified. It is not verified as New Echmiadzin.
 
 Both files match pinned public Scrollmapper downloads byte-for-byte; URLs and hashes are recorded in `data/sources.json`. Scrapers, scraped outputs, and unverified local conversions are excluded from the branch. Public availability does not replace text-specific licence requirements; see [data/README.md](data/README.md).
 
@@ -45,7 +45,7 @@ Both files match pinned public Scrollmapper downloads byte-for-byte; URLs and ha
 - `scripts/audit-bible-data.js`: structural content audit.
 - `scripts/`: structural audit and its tests; see [scripts/README.md](scripts/README.md).
 
-The reader navigates actual available chapter numbers rather than assuming every dataset is contiguous. This avoids missing-chapter navigation errors but does not repair the underlying content. Comparing translations matches book names and chapter numbers; it does not guarantee verse alignment across editions.
+The reader navigates actual available chapter numbers rather than assuming every dataset is contiguous. This avoids missing-chapter navigation errors but does not repair the underlying content. Comparing translations matches book names and chapter numbers; it does not guarantee verse alignment across editions. Missing or withheld comparison content shows an explicit message beside the primary text. Both reading panes start at the top when the book, chapter, or translation changes.
 
 ## Storage
 

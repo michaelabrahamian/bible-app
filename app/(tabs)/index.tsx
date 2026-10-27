@@ -19,11 +19,15 @@ export default function HomeScreen() {
     getCurrentBookName,
     currentChapter,
     primaryVersion,
+    getVersions,
   } = useBible();
   const borderColor = useThemeColor({}, "tabIconDefault");
   const tintColor = useThemeColor({}, "tint");
 
   const books = getBooks();
+  const contentNotice = getVersions().find(
+    ({ id }) => id === primaryVersion,
+  )?.notice;
 
   const handleBookSelect = (bookIndex: number) => {
     setCurrentBook(bookIndex);
@@ -37,17 +41,15 @@ export default function HomeScreen() {
         <ThemedText style={styles.subtitle}>
           {books.length} Books Available
         </ThemedText>
-        {primaryVersion === "armenian" && (
-          <ThemedText style={styles.subtitle}>
-            Genesis, Exodus, Matthew, Mark, Luke and John only.
-          </ThemedText>
-        )}
       </ThemedView>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
+        {contentNotice && (
+          <ThemedText style={styles.contentNotice}>{contentNotice}</ThemedText>
+        )}
         <TouchableOpacity
           style={[styles.bookCard, { borderColor }]}
           accessibilityRole="button"
@@ -106,6 +108,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+  },
+  contentNotice: {
+    marginBottom: 16,
   },
   bookCard: {
     flexDirection: "row",

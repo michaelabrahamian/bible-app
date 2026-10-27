@@ -28,19 +28,21 @@ export interface BibleData {
   books: Book[];
 }
 
-// Upstream ArmEastern contains empty placeholders for unavailable text.
-// Keep those intact in the source file, but only offer readable content.
+// Partly populated ArmEastern chapters can have shifted verse references
+// (for example Luke 1). Withhold the entire chapter instead of dropping blanks
+// and presenting the remaining references as reliable. Keep source files intact.
+function isReadableArmenianChapter(chapter: Chapter): boolean {
+  return (
+    chapter.verses.length > 0 && chapter.verses.every(({ text }) => text.trim())
+  );
+}
+
 const armenianBible: BibleData = {
   translation: armenianData.translation,
   books: (armenianData as BibleData).books
     .map((book) => ({
       ...book,
-      chapters: book.chapters
-        .map((chapter) => ({
-          ...chapter,
-          verses: chapter.verses.filter(({ text }) => text.trim()),
-        }))
-        .filter(({ verses }) => verses.length > 0),
+      chapters: book.chapters.filter(isReadableArmenianChapter),
     }))
     .filter(({ chapters }) => chapters.length > 0),
 };
@@ -55,11 +57,18 @@ export interface BibleVersion {
   id: string;
   name: string;
   language: string;
+  notice?: string;
 }
 
 export const AVAILABLE_VERSIONS: BibleVersion[] = [
   { id: "kjv", name: "King James Version", language: "English" },
-  { id: "armenian", name: "Eastern Armenian (partial)", language: "Հայերեն" },
+  {
+    id: "armenian",
+    name: "Eastern Armenian (partial)",
+    language: "Հայերեն",
+    notice:
+      "Genesis, Exodus and the four Gospels only. 17 chapters are withheld because text is missing and verse references may be incorrect. The remaining text has not been independently verified.",
+  },
 ];
 
 export function getVersions(): BibleVersion[] {
@@ -102,6 +111,24 @@ export function getChapterByName(
 
   const chapter = book.chapters.find((c) => c.chapter === chapterNumber);
   return chapter || null;
+}
+
+export type ChapterAvailability = "available" | "missing" | "withheld";
+
+export function getChapterAvailability(
+  versionId: string,
+  bookName: string,
+  chapterNumber: number,
+): ChapterAvailability {
+  if (getChapterByName(versionId, bookName, chapterNumber)) return "available";
+  if (versionId === "armenian") {
+    const sourceChapter = (armenianData as BibleData).books
+      .find(({ name }) => name === bookName)
+      ?.chapters.find(({ chapter }) => chapter === chapterNumber);
+    if (sourceChapter?.verses.some(({ text }) => text.trim()))
+      return "withheld";
+  }
+  return "missing";
 }
 
 export function getBookName(versionId: string, bookIndex: number): string {

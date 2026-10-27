@@ -9,7 +9,8 @@ import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBible } from "@/contexts/bible-context";
 import { useThemeColor } from "@/hooks/use-theme-color";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const {
@@ -24,6 +25,7 @@ export default function SettingsScreen() {
 
   const borderColor = useThemeColor({}, "tabIconDefault");
   const tintColor = useThemeColor({}, "tint");
+  const insets = useSafeAreaInsets();
 
   const versions = getVersions();
 
@@ -49,130 +51,142 @@ export default function SettingsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="title">Settings</ThemedText>
-      </ThemedView>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ThemedView style={[styles.header, { paddingTop: 20 + insets.top }]}>
+          <ThemedText type="title">Settings</ThemedText>
+        </ThemedView>
 
-      <View style={styles.section}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Primary Version
-        </ThemedText>
-        {versions.map((version) => (
-          <TouchableOpacity
-            key={version.id}
-            style={[styles.versionCard, { borderColor }]}
-            onPress={() => handleVersionSelect("primary", version.id)}
-          >
-            <View style={styles.versionInfo}>
-              <ThemedText type="defaultSemiBold" style={styles.versionName}>
-                {version.name}
-              </ThemedText>
-              <ThemedText style={styles.versionLang}>
-                {version.language}
-              </ThemedText>
-            </View>
-            {primaryVersion === version.id && (
-              <IconSymbol
-                name="checkmark.circle.fill"
-                size={24}
-                color={tintColor}
-              />
-            )}
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
+        <View style={styles.section}>
           <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Compare With
+            Primary Version
           </ThemedText>
-          <TouchableOpacity
-            onPress={handleToggleSecondary}
-            style={styles.toggleButton}
-          >
-            <ThemedText style={[styles.toggleText, { color: tintColor }]}>
-              {secondaryVersion ? "Disable" : "Enable"}
-            </ThemedText>
-          </TouchableOpacity>
+          {versions.map((version) => (
+            <TouchableOpacity
+              key={version.id}
+              style={[styles.versionCard, { borderColor }]}
+              onPress={() => handleVersionSelect("primary", version.id)}
+            >
+              <View style={styles.versionInfo}>
+                <ThemedText type="defaultSemiBold" style={styles.versionName}>
+                  {version.name}
+                </ThemedText>
+                <ThemedText style={styles.versionLang}>
+                  {version.language}
+                </ThemedText>
+                {version.notice && (
+                  <ThemedText style={styles.versionNotice}>
+                    {version.notice}
+                  </ThemedText>
+                )}
+              </View>
+              {primaryVersion === version.id && (
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={24}
+                  color={tintColor}
+                />
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {secondaryVersion && (
-          <>
-            {versions.map((version) => (
-              <TouchableOpacity
-                key={version.id}
-                style={[styles.versionCard, { borderColor }]}
-                onPress={() => handleVersionSelect("secondary", version.id)}
-                disabled={version.id === primaryVersion}
-              >
-                <View style={styles.versionInfo}>
-                  <ThemedText
-                    type="defaultSemiBold"
-                    style={[
-                      styles.versionName,
-                      version.id === primaryVersion && styles.disabledText,
-                    ]}
-                  >
-                    {version.name}
-                  </ThemedText>
-                  <ThemedText
-                    style={[
-                      styles.versionLang,
-                      version.id === primaryVersion && styles.disabledText,
-                    ]}
-                  >
-                    {version.language}
-                  </ThemedText>
-                </View>
-                {secondaryVersion === version.id && (
-                  <IconSymbol
-                    name="checkmark.circle.fill"
-                    size={24}
-                    color={tintColor}
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
-          </>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Display
-        </ThemedText>
-        <TouchableOpacity
-          style={[styles.settingCard, { borderColor }]}
-          onPress={toggleDualView}
-          disabled={!secondaryVersion}
-        >
-          <View style={styles.settingInfo}>
-            <ThemedText
-              type="defaultSemiBold"
-              style={[
-                styles.settingName,
-                !secondaryVersion && styles.disabledText,
-              ]}
-            >
-              Dual View
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Compare With
             </ThemedText>
-            <ThemedText
-              style={[
-                styles.settingDescription,
-                !secondaryVersion && styles.disabledText,
-              ]}
+            <TouchableOpacity
+              onPress={handleToggleSecondary}
+              style={styles.toggleButton}
             >
-              Show both versions side-by-side
-            </ThemedText>
+              <ThemedText style={[styles.toggleText, { color: tintColor }]}>
+                {secondaryVersion ? "Disable" : "Enable"}
+              </ThemedText>
+            </TouchableOpacity>
           </View>
-          <IconSymbol
-            name={showDualView ? "checkmark.circle.fill" : "circle"}
-            size={24}
-            color={showDualView && secondaryVersion ? tintColor : borderColor}
-          />
-        </TouchableOpacity>
-      </View>
+
+          {secondaryVersion && (
+            <>
+              {versions.map((version) => (
+                <TouchableOpacity
+                  key={version.id}
+                  style={[styles.versionCard, { borderColor }]}
+                  onPress={() => handleVersionSelect("secondary", version.id)}
+                  disabled={version.id === primaryVersion}
+                >
+                  <View style={styles.versionInfo}>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={[
+                        styles.versionName,
+                        version.id === primaryVersion && styles.disabledText,
+                      ]}
+                    >
+                      {version.name}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.versionLang,
+                        version.id === primaryVersion && styles.disabledText,
+                      ]}
+                    >
+                      {version.language}
+                    </ThemedText>
+                    {version.notice && (
+                      <ThemedText style={styles.versionNotice}>
+                        {version.notice}
+                      </ThemedText>
+                    )}
+                  </View>
+                  {secondaryVersion === version.id && (
+                    <IconSymbol
+                      name="checkmark.circle.fill"
+                      size={24}
+                      color={tintColor}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Display
+          </ThemedText>
+          <TouchableOpacity
+            style={[styles.settingCard, { borderColor }]}
+            onPress={toggleDualView}
+            disabled={!secondaryVersion}
+          >
+            <View style={styles.settingInfo}>
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.settingName,
+                  !secondaryVersion && styles.disabledText,
+                ]}
+              >
+                Dual View
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.settingDescription,
+                  !secondaryVersion && styles.disabledText,
+                ]}
+              >
+                Show both versions side-by-side
+              </ThemedText>
+            </View>
+            <IconSymbol
+              name={showDualView ? "checkmark.circle.fill" : "circle"}
+              size={24}
+              color={showDualView && secondaryVersion ? tintColor : borderColor}
+            />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -180,6 +194,9 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   header: {
     padding: 20,
@@ -225,6 +242,11 @@ const styles = StyleSheet.create({
   versionLang: {
     fontSize: 14,
     opacity: 0.6,
+  },
+  versionNotice: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
   },
   settingCard: {
     flexDirection: "row",

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-27 — Review fixes
+
+- Withhold 17 partly populated Armenian chapters with missing text and potentially shifted references; preserve public source files unchanged.
+- Explain missing and withheld comparison content explicitly while keeping translations in separate panes.
+- Reset reading panes to the top on book/chapter/translation changes.
+- Make settings scrollable with top safe-area spacing and bottom padding.
+- Add quarantine and saved-position regression coverage.
+
 ## 2026-10-27 — Framework and reader maintenance
 
 - Upgrade Expo SDK 54 to 58 through SDKs 55, 56, and 57; align React 19.3, React Native 0.88, and SDK dependencies.
