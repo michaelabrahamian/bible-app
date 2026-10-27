@@ -41,3 +41,18 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Local Bible collection experiments excluded from publication
+/data/ArmReformed.json
+/data/ArmenianBibleSociety.json
+/data/ArmenianBibleSociety copy.json
+/data/ArmenianClassical.json
+/data/hye.bible.catholic.reformed.txt
+/data/hye.bible.catholic.reformed.txt.backup
+/scripts/scrape-bible-society-armenia.js
+/scripts/fix-missing-chapters.js
+/scripts/scrape-ter-hambardzum.js
+/scripts/convert-armenian-txt.js
+/scrape-log.txt
+/fix-log.txt
+/CONVERSION_FIX_SUMMARY.md

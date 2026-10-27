@@ -1,112 +1,273 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * Settings Screen
+ *
+ * Simple version selection for primary and secondary Bible
+ */
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useBible } from "@/contexts/bible-context";
+import { useThemeColor } from "@/hooks/use-theme-color";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function TabTwoScreen() {
+export default function SettingsScreen() {
+  const {
+    primaryVersion,
+    secondaryVersion,
+    setPrimaryVersion,
+    setSecondaryVersion,
+    showDualView,
+    toggleDualView,
+    getVersions,
+  } = useBible();
+
+  const borderColor = useThemeColor({}, "tabIconDefault");
+  const tintColor = useThemeColor({}, "tint");
+  const insets = useSafeAreaInsets();
+
+  const versions = getVersions();
+
+  const handleVersionSelect = (type: "primary" | "secondary", id: string) => {
+    if (type === "primary") {
+      setPrimaryVersion(id);
+    } else {
+      setSecondaryVersion(id);
+    }
+  };
+
+  const handleToggleSecondary = () => {
+    if (secondaryVersion) {
+      setSecondaryVersion(null);
+    } else {
+      // Enable with the other version
+      const otherVersion = versions.find((v) => v.id !== primaryVersion);
+      if (otherVersion) {
+        setSecondaryVersion(otherVersion.id);
+      }
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
+    <ThemedView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ThemedView style={[styles.header, { paddingTop: 20 + insets.top }]}>
+          <ThemedText type="title">Settings</ThemedText>
+        </ThemedView>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Primary Version
+          </ThemedText>
+          {versions.map((version) => (
+            <TouchableOpacity
+              key={version.id}
+              style={[styles.versionCard, { borderColor }]}
+              onPress={() => handleVersionSelect("primary", version.id)}
+            >
+              <View style={styles.versionInfo}>
+                <ThemedText type="defaultSemiBold" style={styles.versionName}>
+                  {version.name}
+                </ThemedText>
+                <ThemedText style={styles.versionLang}>
+                  {version.language}
+                </ThemedText>
+                {version.notice && (
+                  <ThemedText style={styles.versionNotice}>
+                    {version.notice}
+                  </ThemedText>
+                )}
+              </View>
+              {primaryVersion === version.id && (
+                <IconSymbol
+                  name="checkmark.circle.fill"
+                  size={24}
+                  color={tintColor}
+                />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              Compare With
             </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+            <TouchableOpacity
+              onPress={handleToggleSecondary}
+              style={styles.toggleButton}
+            >
+              <ThemedText style={[styles.toggleText, { color: tintColor }]}>
+                {secondaryVersion ? "Disable" : "Enable"}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {secondaryVersion && (
+            <>
+              {versions.map((version) => (
+                <TouchableOpacity
+                  key={version.id}
+                  style={[styles.versionCard, { borderColor }]}
+                  onPress={() => handleVersionSelect("secondary", version.id)}
+                  disabled={version.id === primaryVersion}
+                >
+                  <View style={styles.versionInfo}>
+                    <ThemedText
+                      type="defaultSemiBold"
+                      style={[
+                        styles.versionName,
+                        version.id === primaryVersion && styles.disabledText,
+                      ]}
+                    >
+                      {version.name}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.versionLang,
+                        version.id === primaryVersion && styles.disabledText,
+                      ]}
+                    >
+                      {version.language}
+                    </ThemedText>
+                    {version.notice && (
+                      <ThemedText style={styles.versionNotice}>
+                        {version.notice}
+                      </ThemedText>
+                    )}
+                  </View>
+                  {secondaryVersion === version.id && (
+                    <IconSymbol
+                      name="checkmark.circle.fill"
+                      size={24}
+                      color={tintColor}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            Display
+          </ThemedText>
+          <TouchableOpacity
+            style={[styles.settingCard, { borderColor }]}
+            onPress={toggleDualView}
+            disabled={!secondaryVersion}
+          >
+            <View style={styles.settingInfo}>
+              <ThemedText
+                type="defaultSemiBold"
+                style={[
+                  styles.settingName,
+                  !secondaryVersion && styles.disabledText,
+                ]}
+              >
+                Dual View
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.settingDescription,
+                  !secondaryVersion && styles.disabledText,
+                ]}
+              >
+                Show both versions side-by-side
+              </ThemedText>
+            </View>
+            <IconSymbol
+              name={showDualView ? "checkmark.circle.fill" : "circle"}
+              size={24}
+              color={showDualView && secondaryVersion ? tintColor : borderColor}
+            />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  scrollContent: {
+    paddingBottom: 24,
+  },
+  header: {
+    padding: 20,
+    paddingBottom: 12,
+  },
+  section: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
+  toggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  toggleText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  versionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  versionInfo: {
+    flex: 1,
+  },
+  versionName: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  versionLang: {
+    fontSize: 14,
+    opacity: 0.6,
+  },
+  versionNotice: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  settingCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  settingInfo: {
+    flex: 1,
+  },
+  settingName: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 14,
+    opacity: 0.6,
+  },
+  disabledText: {
+    opacity: 0.3,
   },
 });
