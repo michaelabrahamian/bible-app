@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-29 — Reader review fixes
+
+- Correct NEB Matthew 23 and Mark 9 verse identities using verified reference mappings, preserving source text and intentional gaps.
+- Bind the correction metadata to the pinned NEB source hash and record reference evidence.
+- Follow the visible edition for secondary-only books and chapters, including KJV Malachi 4; preserve translation roles and migrate saved positions by book name.
+- Cover reference gaps, secondary-only navigation, catalogue switches and saved-position migration with regressions.
+
 ## 2026-10-27 — Reading UI refresh
 
 - Introduce warm paper and deep green themes with matching dark mode and navigation.

@@ -21,7 +21,7 @@ export default function HomeScreen() {
     setCurrentBook,
     getCurrentBookName,
     currentChapter,
-    primaryVersion,
+    navigationVersion,
     getVersions,
     getPrimaryChapter,
     getSecondaryChapter,
@@ -33,7 +33,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const books = getBooks();
-  const version = getVersions().find(({ id }) => id === primaryVersion);
+  const version = getVersions().find(({ id }) => id === navigationVersion);
   const filtered = books
     .map((book, index) => ({ book, index }))
     .filter(({ book }) =>

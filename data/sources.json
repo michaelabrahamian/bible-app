@@ -31,7 +31,8 @@
       "downloadedOn": "2026-10-27",
       "repositoryLicense": "MIT; repository expressly reserves Bible owners rights",
       "publisherPermission": "Not obtained; public distribution not cleared",
-      "textPolicy": "Source bytes preserved. Runtime explicit abbreviation-to-book mapping. Chapter and verse identities use source array positions, not independently verified reference IDs. Psalms withheld: only 149 chapter arrays. Missing Esther, Daniel and deuterocanonical books."
+      "textPolicy": "Source bytes preserved. Runtime explicit abbreviation-to-book mapping. Matthew 23 and Mark 9 use verified reference corrections in NEB-REFERENCES.json; other references use source array positions and remain unverified. Psalms withheld: only 149 chapter arrays. Missing Esther, Daniel and deuterocanonical books.",
+      "referenceCorrections": "NEB-REFERENCES.json"
     }
   ],
   "scrollmapper": {

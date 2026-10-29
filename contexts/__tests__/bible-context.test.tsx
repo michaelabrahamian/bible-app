@@ -37,6 +37,7 @@ test("waits for stored preferences before saving defaults", async () => {
         currentBookIndex: BibleService.getBooks("neb").findIndex(
           ({ name }) => name === "John",
         ),
+        currentBookName: "John",
         currentChapter: 3,
         showDualView: false,
         comparisonLayout: "side-by-side",
@@ -68,6 +69,7 @@ test("persists translation choices and position across provider remounts", async
         currentBookIndex: BibleService.getBooks("neb").findIndex(
           ({ name }) => name === "John",
         ),
+        currentBookName: "John",
         currentChapter: 3,
         showDualView: false,
         comparisonLayout: "side-by-side",
@@ -297,4 +299,105 @@ test("persists secondary-only reading without swapping translation roles", async
   expect(second.result.current.primaryVersion).toBe("kjv");
   expect(second.result.current.secondaryVersion).toBe("neb");
   expect(second.result.current.getSecondaryChapter()).not.toBeNull();
+});
+
+test("secondary-only navigation offers the visible edition's complete catalogue and chapters", async () => {
+  const { result } = await renderHook(useBible, { wrapper: BibleProvider });
+  await waitFor(() => expect(result.current.isReady).toBe(true));
+  await act(async () => result.current.setPrimaryVersion("neb"));
+  await act(async () => {
+    result.current.setSinglePane("secondary");
+    result.current.toggleDualView();
+  });
+  expect(result.current.navigationVersion).toBe("kjv");
+  expect(result.current.getBooks()).toHaveLength(66);
+  expect(result.current.getBooks().some(({ name }) => name === "Psalms")).toBe(
+    true,
+  );
+  await act(async () =>
+    result.current.setCurrentBook(
+      result.current.getBooks().findIndex(({ name }) => name === "Malachi"),
+    ),
+  );
+  expect(result.current.getChapterNumbers()).toEqual([1, 2, 3, 4]);
+  await act(async () => result.current.setCurrentChapter(4));
+  expect(result.current.currentChapter).toBe(4);
+  expect(result.current.getSecondaryChapter()).not.toBeNull();
+  expect(result.current.getPrimaryChapter()).toBeNull();
+  expect(result.current.primaryVersion).toBe("neb");
+  expect(result.current.secondaryVersion).toBe("kjv");
+});
+
+test("restores legacy secondary-only positions by primary book identity, then persists the visible position by name", async () => {
+  await AsyncStorage.setItem(
+    READER_STORAGE_KEY,
+    JSON.stringify({
+      primaryVersion: "neb",
+      secondaryVersion: "kjv",
+      currentBookIndex: BibleService.getBooks("neb").findIndex(
+        ({ name }) => name === "Malachi",
+      ),
+      currentChapter: 3,
+      singlePane: "secondary",
+      showDualView: false,
+    }),
+  );
+  const first = await renderHook(useBible, { wrapper: BibleProvider });
+  await waitFor(() => expect(first.result.current.isReady).toBe(true));
+  expect(first.result.current.getCurrentBookName()).toBe("Malachi");
+  expect(first.result.current.currentBookIndex).toBe(38);
+  await act(async () => first.result.current.setCurrentChapter(4));
+  await waitFor(() =>
+    expect(AsyncStorage.setItem).toHaveBeenLastCalledWith(
+      READER_STORAGE_KEY,
+      expect.stringContaining('"currentBookName":"Malachi","currentChapter":4'),
+    ),
+  );
+  await first.unmount();
+  const second = await renderHook(useBible, { wrapper: BibleProvider });
+  await waitFor(() => expect(second.result.current.isReady).toBe(true));
+  expect(second.result.current.getCurrentBookName()).toBe("Malachi");
+  expect(second.result.current.currentChapter).toBe(4);
+  expect(second.result.current.getSecondaryChapter()).not.toBeNull();
+});
+
+test("layout and translation changes preserve the passage across differing book indices", async () => {
+  const { result } = await renderHook(useBible, { wrapper: BibleProvider });
+  await waitFor(() => expect(result.current.isReady).toBe(true));
+  await act(async () => {
+    result.current.setCurrentBook(42);
+    result.current.setCurrentChapter(3);
+    result.current.setSinglePane("secondary");
+    result.current.toggleDualView();
+  });
+  expect(result.current.navigationVersion).toBe("neb");
+  expect(result.current.getCurrentBookName()).toBe("John");
+  expect(result.current.currentChapter).toBe(3);
+  await act(async () => result.current.setSecondaryVersion("web"));
+  expect(result.current.navigationVersion).toBe("web");
+  expect(result.current.getCurrentBookName()).toBe("John");
+  expect(result.current.getPrimaryChapter()?.chapter).toBe(3);
+  await act(async () => result.current.toggleDualView());
+  expect(result.current.navigationVersion).toBe("kjv");
+  expect(result.current.getCurrentBookName()).toBe("John");
+  expect(result.current.currentChapter).toBe(3);
+});
+
+test("NEB reference corrections retain publisher omissions without shifting later verses", () => {
+  const mark = BibleService.getChapterByName("neb", "Mark", 9)!;
+  const rawMark = nebSource.find(({ abbrev }) => abbrev === "mc")!.chapters[8];
+  expect(mark.verses.find(({ verse }) => verse === 44)).toBeUndefined();
+  expect(mark.verses.find(({ verse }) => verse === 46)).toBeUndefined();
+  expect(mark.verses.find(({ verse }) => verse === 45)?.text).toBe(rawMark[43]);
+  expect(mark.verses.find(({ verse }) => verse === 50)?.text).toBe(rawMark[47]);
+  const matthew = BibleService.getChapterByName("neb", "Matthew", 23)!;
+  const rawMatthew = nebSource.find(({ abbrev }) => abbrev === "mt")!
+    .chapters[22];
+  expect(matthew.verses.find(({ verse }) => verse === 14)).toBeUndefined();
+  expect(matthew.verses.find(({ verse }) => verse === 15)?.text).toBe(
+    rawMatthew[13],
+  );
+  expect(matthew.verses.find(({ verse }) => verse === 39)?.text).toBe(
+    rawMatthew[37],
+  );
 });

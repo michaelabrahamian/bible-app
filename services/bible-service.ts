@@ -8,6 +8,7 @@
 // New Etchmiadzin source: https://github.com/thiagobodruk/bible (json/hy_neb.json).
 // Pinned revision, hash and rights status: data/sources.json and TEXT_LICENSES.md.
 import nebData from "@/data/NEB.json";
+import nebReferences from "@/data/NEB-REFERENCES.json";
 import kjvData from "@/data/KJV.json";
 import webData from "@/data/WEB.json";
 
@@ -32,7 +33,8 @@ export interface BibleData {
 }
 
 // Explicit identities prevent the two missing OT books from shifting comparisons.
-// Preserve source strings and array positions; the source has no explicit verse IDs.
+// Keep source strings unchanged. Verified reference overrides correct the two
+// known chapters whose omitted verses make array positions incorrect.
 const nebBookNames: Record<string, string> = {
   gn: "Genesis",
   ex: "Exodus",
@@ -107,10 +109,31 @@ const nebBible: BibleData = {
     .filter(({ abbrev }) => abbrev !== "sl")
     .map((book) => ({
       name: nebBookNames[book.abbrev],
-      chapters: book.chapters.map((verses, index) => ({
-        chapter: index + 1,
-        verses: verses.map((text, index) => ({ verse: index + 1, text })),
-      })),
+      chapters: book.chapters.flatMap((verses, index) => {
+        const chapter = index + 1;
+        const references = nebReferences.chapters.find(
+          (entry) =>
+            entry.book === nebBookNames[book.abbrev] &&
+            entry.chapter === chapter,
+        );
+        // Source shape changes invalidate a mapping. Tests also bind it to the
+        // source hash. Never fall back to array positions for these chapters.
+        if (
+          references &&
+          (references.sourceEntryCount !== verses.length ||
+            references.verseNumbers.length !== verses.length)
+        )
+          return [];
+        return [
+          {
+            chapter,
+            verses: verses.map((text, index) => ({
+              verse: references ? references.verseNumbers[index] : index + 1,
+              text,
+            })),
+          },
+        ];
+      }),
     })),
 };
 
@@ -152,7 +175,7 @@ export const AVAILABLE_VERSIONS: BibleVersion[] = [
     abbreviation: "ՆԷ",
     description: "Eastern Armenian · incomplete GitHub edition",
     notice:
-      "This copy has all 27 New Testament books, but lacks Esther, Daniel and the additional books of the publisher's edition. Psalms is withheld because its chapter references are uncertain. Other chapter and verse numbers follow source array positions and may differ from English editions. Edition identity, textual accuracy and redistribution rights remain unverified.",
+      "This copy has all 27 New Testament books, but lacks Esther, Daniel and the additional books of the publisher's edition. Psalms is withheld because its chapter references are uncertain. Matthew 23 and Mark 9 use verified verse-number mappings. Other chapter and verse numbers follow source array positions and may differ from English editions. Edition identity, textual accuracy and redistribution rights remain unverified.",
   },
 ];
 
@@ -206,7 +229,13 @@ export function getChapterAvailability(
   chapterNumber: number,
 ): ChapterAvailability {
   if (getChapterByName(versionId, bookName, chapterNumber)) return "available";
-  if (versionId === "neb" && bookName === "Psalms") return "withheld";
+  if (versionId === "neb") {
+    if (bookName === "Psalms") return "withheld";
+    const source = nebData.find(
+      (book) => nebBookNames[book.abbrev] === bookName,
+    )?.chapters[chapterNumber - 1];
+    if (source?.length) return "withheld";
+  }
   return "missing";
 }
 
