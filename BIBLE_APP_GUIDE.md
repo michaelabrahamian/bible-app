@@ -6,6 +6,8 @@ On the reader, tap the compact book/chapter reference (for example, **Proverbs 2
 
 Swipe left for the next chapter or right for the previous chapter. The bottom arrows do the same, continuing across book boundaries and stopping at the beginning or end of the available Bible. Missing chapters and unavailable books are skipped. Vertical scrolling remains available in each reading pane.
 
+In Stacked layout, scrolling either translation also moves the other to the corresponding verse position. The panes use measured verse positions rather than equal pixel offsets, so different text lengths stay in step. Omitted verses use the nearest shared references, and both panes finish at the bottom together. An unavailable chapter is left independent.
+
 The reader keeps navigation compact: one line for the book/chapter heading, and a slim bottom row with chapter arrows and progress. The main Bible/Settings tabs float over the content using native Liquid Glass on supported iOS devices. Other devices keep the standard themed tab bar. Library and Settings content have extra bottom padding only when the floating bar is used.
 
 The top-right **View** button (sliders icon) opens **Reading options**. Choose Primary only, Secondary only, Side by side or Stacked; adjust the reading text size with **A− / A+**; or change the colour theme and System/Light/Dark appearance. Changes apply immediately, and the menu stays open while you adjust them. Close it to return to reading. Parallel text defaults to Side by side on phones and tablets. Choose Stacked for wider lines. Tap either pane's translation header to choose another text.

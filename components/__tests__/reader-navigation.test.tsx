@@ -21,6 +21,7 @@ import {
   useBible,
 } from "@/contexts/bible-context";
 import { getAdjacentPassage } from "@/utils/reader-navigation";
+import * as scrollLinks from "@/utils/linked-verse-scroll";
 import type { Book } from "@/services/bible-service";
 
 jest.mock("@react-native-async-storage/async-storage", () =>
@@ -101,6 +102,74 @@ async function swipe(
     ]),
   );
 }
+
+test("stacked panes measure verses and scrolling either translation moves its companion", async () => {
+  const link = scrollLinks.createLinkedVerseScroll();
+  const moves = [
+    jest.fn<(y: number) => void>(),
+    jest.fn<(y: number) => void>(),
+  ];
+  const attach = link.attach;
+  jest.spyOn(link, "attach").mockImplementation((index, scrollTo) => {
+    attach(
+      index,
+      scrollTo
+        ? (y) => {
+            moves[index](y);
+            scrollTo(y);
+          }
+        : undefined,
+    );
+  });
+  const factory = jest
+    .spyOn(scrollLinks, "createLinkedVerseScroll")
+    .mockReturnValueOnce(link);
+  try {
+    const screen = await reader({
+      showDualView: true,
+      comparisonLayout: "stacked",
+    });
+    const primary = screen.getByTestId("chapter-scroll-kjv");
+    const secondary = screen.getByTestId("chapter-scroll-neb");
+    for (const pane of [primary, secondary]) {
+      await fireEvent(pane, "layout", {
+        nativeEvent: { layout: { height: 200 } },
+      });
+    }
+    await fireEvent(primary, "contentSizeChange", 300, 1000);
+    await fireEvent(secondary, "contentSizeChange", 300, 1200);
+    for (const [version, offsets] of [
+      ["kjv", [20, 120, 320]],
+      ["neb", [20, 220, 420]],
+    ] as const) {
+      for (const [index, y] of offsets.entries()) {
+        await fireEvent(
+          screen.getByTestId(`chapter-${version}-verse-${index + 1}`),
+          "layout",
+          { nativeEvent: { layout: { y } } },
+        );
+      }
+    }
+    await fireEvent(primary, "scrollBeginDrag");
+    await fireEvent.scroll(primary, {
+      nativeEvent: { contentOffset: { y: 120 } },
+    });
+    expect(moves[1]).toHaveBeenLastCalledWith(220);
+    moves[0].mockClear();
+    await fireEvent.scroll(secondary, {
+      nativeEvent: { contentOffset: { y: 220 } },
+    });
+    expect(moves[0]).not.toHaveBeenCalled();
+    await fireEvent(secondary, "scrollBeginDrag");
+    await fireEvent.scroll(secondary, {
+      nativeEvent: { contentOffset: { y: 320 } },
+    });
+    expect(moves[0]).toHaveBeenLastCalledWith(220);
+    await screen.unmount();
+  } finally {
+    factory.mockRestore();
+  }
+});
 
 test("the reader heading opens the current book's chapters and selects a chapter", async () => {
   const screen = await reader();

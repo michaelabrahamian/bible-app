@@ -12,6 +12,10 @@ import { useBible } from "@/contexts/bible-context";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { getAdjacentPassage } from "@/utils/reader-navigation";
 import {
+  createLinkedVerseScroll,
+  type LinkedVerseScroll,
+} from "@/utils/linked-verse-scroll";
+import {
   getChapterAvailability,
   type Chapter,
   type Verse,
@@ -20,6 +24,7 @@ import { useState } from "react";
 import { router, Stack } from "expo-router";
 import {
   StyleSheet,
+  Platform,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -235,6 +240,30 @@ export default function ReaderScreen() {
                 swipeGesture: chapterSwipe,
               }}
             />
+          ) : comparing && secondaryVersion ? (
+            <StackedChapters
+              key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
+              primary={{
+                chapter: getPrimaryChapter(),
+                versionId: primaryVersion,
+                label: "Primary translation",
+                onVersionChange: setPrimaryVersion,
+                swapVersion: secondaryVersion,
+                narrow: false,
+                unavailableMessage: unavailableMessage(primaryVersion),
+                swipeGesture: chapterSwipe,
+              }}
+              secondary={{
+                chapter: getSecondaryChapter(),
+                versionId: secondaryVersion,
+                label: "Comparison translation",
+                onVersionChange: setSecondaryVersion,
+                excludedVersion: primaryVersion,
+                narrow: false,
+                unavailableMessage: unavailableMessage(secondaryVersion),
+                swipeGesture: chapterSwipe,
+              }}
+            />
           ) : (
             <>
               <View style={styles.pane}>
@@ -263,21 +292,6 @@ export default function ReaderScreen() {
                   )}
                 />
               </View>
-              {comparing && secondaryVersion && (
-                <View style={styles.pane}>
-                  <ChapterView
-                    key={`${secondaryVersion}:${bookName}:${currentChapter}:${comparisonLayout}`}
-                    chapter={getSecondaryChapter()}
-                    versionId={secondaryVersion}
-                    label="Comparison translation"
-                    excludedVersion={primaryVersion}
-                    onVersionChange={setSecondaryVersion}
-                    narrow={false}
-                    swipeGesture={chapterSwipe}
-                    unavailableMessage={unavailableMessage(secondaryVersion)}
-                  />
-                </View>
-              )}
             </>
           )}
         </View>
@@ -348,6 +362,28 @@ interface ReadingPane {
   narrow: boolean;
   unavailableMessage: string;
   swipeGesture: PanGesture;
+}
+
+function StackedChapters({
+  primary,
+  secondary,
+}: {
+  primary: ReadingPane;
+  secondary: ReadingPane;
+}) {
+  const [scrollLink] = useState(createLinkedVerseScroll);
+  return (
+    <>
+      {([primary, secondary] as const).map((pane, index) => (
+        <View key={pane.label} style={styles.pane}>
+          <ChapterView
+            {...pane}
+            linkedScroll={{ controller: scrollLink, pane: index as 0 | 1 }}
+          />
+        </View>
+      ))}
+    </>
+  );
 }
 
 function AlignedChapters({
@@ -497,8 +533,13 @@ function ChapterView({
   narrow,
   unavailableMessage,
   swipeGesture,
-}: ReadingPane) {
+  linkedScroll,
+}: ReadingPane & {
+  linkedScroll?: { controller: LinkedVerseScroll; pane: 0 | 1 };
+}) {
   const colors = useAppTheme();
+  const takeControl = () =>
+    linkedScroll?.controller.activate(linkedScroll.pane);
   return (
     <View
       style={[
@@ -515,6 +556,39 @@ function ChapterView({
         compact
       />
       <ScrollView
+        testID={`chapter-scroll-${versionId}`}
+        ref={(node) =>
+          linkedScroll?.controller.attach(
+            linkedScroll.pane,
+            node ? (y) => node.scrollTo({ y, animated: false }) : undefined,
+          )
+        }
+        onScrollBeginDrag={takeControl}
+        onTouchStart={takeControl}
+        // React Native Web forwards these DOM events; native uses drag/touch.
+        {...(Platform.OS === "web"
+          ? {
+              onWheel: takeControl,
+              onPointerDown: takeControl,
+              onKeyDown: takeControl,
+            }
+          : {})}
+        onLayout={({ nativeEvent }) =>
+          linkedScroll?.controller.measureViewport(
+            linkedScroll.pane,
+            nativeEvent.layout.height,
+          )
+        }
+        onContentSizeChange={(_, height) =>
+          linkedScroll?.controller.measureContent(linkedScroll.pane, height)
+        }
+        onScroll={({ nativeEvent }) =>
+          linkedScroll?.controller.scroll(
+            linkedScroll.pane,
+            nativeEvent.contentOffset.y,
+          )
+        }
+        scrollEventThrottle={16}
         simultaneousWith={swipeGesture}
         style={styles.versesContainer}
         contentContainerStyle={[
@@ -525,7 +599,19 @@ function ChapterView({
       >
         {chapter ? (
           chapter.verses.map((verse) => (
-            <VerseContent key={verse.verse} verse={verse} narrow={narrow} />
+            <View
+              key={verse.verse}
+              testID={`chapter-${versionId}-verse-${verse.verse}`}
+              onLayout={({ nativeEvent }) =>
+                linkedScroll?.controller.measureVerse(
+                  linkedScroll.pane,
+                  verse.verse,
+                  nativeEvent.layout.y,
+                )
+              }
+            >
+              <VerseContent verse={verse} narrow={narrow} />
+            </View>
           ))
         ) : (
           <UnavailableText message={unavailableMessage} />
