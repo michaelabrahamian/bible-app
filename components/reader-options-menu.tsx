@@ -15,10 +15,12 @@ export type ReaderLayout = (typeof layoutOptions)[number]["id"];
 
 export function ReaderOptionsMenu({
   selectedLayout,
+  displayLayout,
   onSelectLayout,
   onClose,
 }: {
   selectedLayout: ReaderLayout;
+  displayLayout?: "side-by-side" | "stacked";
   onSelectLayout: (layout: ReaderLayout) => void;
   onClose: () => void;
 }) {
@@ -45,12 +47,18 @@ export function ReaderOptionsMenu({
           >
             {layoutOptions.map((option) => {
               const selected = selectedLayout === option.id;
+              const disabled = Boolean(
+                displayLayout &&
+                  (option.id === "side-by-side" || option.id === "stacked") &&
+                  option.id !== displayLayout,
+              );
               return (
                 <TouchableOpacity
                   key={option.id}
                   accessibilityRole="radio"
                   aria-checked={selected}
-                  accessibilityState={{ checked: selected }}
+                  accessibilityState={{ checked: selected, disabled }}
+                  disabled={disabled}
                   accessibilityLabel={option.name}
                   onPress={() => onSelectLayout(option.id)}
                   style={[
@@ -60,6 +68,7 @@ export function ReaderOptionsMenu({
                         ? colors.accentSoft
                         : colors.surface,
                       borderColor: selected ? colors.tint : colors.border,
+                      opacity: disabled ? 0.45 : 1,
                     },
                   ]}
                 >
@@ -75,6 +84,18 @@ export function ReaderOptionsMenu({
               );
             })}
           </View>
+          {displayLayout && (
+            <ThemedText
+              style={{
+                fontSize: 12,
+                lineHeight: 20,
+                color: colors.secondaryText,
+              }}
+            >
+              Comparison follows the fold while this display is open. Your
+              preferred layout returns when it closes.
+            </ThemedText>
+          )}
         </View>
         <ReadingAppearanceControls />
       </ScrollView>

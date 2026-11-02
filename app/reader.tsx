@@ -5,6 +5,12 @@ import {
 } from "@/components/reader-options-menu";
 import { useAppearance } from "@/contexts/appearance-context";
 import { PassagePicker } from "@/components/passage-picker";
+import { DisplayRegionsObserver } from "@/components/display-regions-observer";
+import {
+  getReaderDisplaySplit,
+  type ReaderDisplayRegions,
+  type ReaderDisplaySplit,
+} from "@/utils/reader-display-layout";
 import { TranslationSelect } from "@/components/translation-select";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Fonts } from "@/constants/theme";
@@ -84,6 +90,13 @@ export default function ReaderScreen() {
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const [displayRegions, setDisplayRegions] =
+    useState<ReaderDisplayRegions | null>(null);
+  const outerPadding = { left: insets.left + 16, right: insets.right + 16 };
+  const displaySplit =
+    displayRegions && Math.abs(displayRegions.width - width) < 1
+      ? getReaderDisplaySplit(displayRegions, outerPadding)
+      : null;
   const bookName = getCurrentBookName();
   const books = getBooks();
   const chapters = getChapterNumbers();
@@ -115,12 +128,22 @@ export default function ReaderScreen() {
     },
   });
   const comparing = showDualView && Boolean(secondaryVersion);
-  const sideBySide = comparing && comparisonLayout === "side-by-side";
-  const narrow = sideBySide && width < 700;
+  const split = comparing ? displaySplit : null;
+  const sideBySide =
+    comparing &&
+    (split ? split.axis === "vertical" : comparisonLayout === "side-by-side");
+  const verticalSplit = split?.axis === "vertical" ? split : null;
+  const narrow =
+    sideBySide &&
+    (verticalSplit
+      ? Math.min(verticalSplit.primary, verticalSplit.secondary) < 334
+      : width < 700);
   const secondaryOnly =
     !comparing && singlePane === "secondary" && Boolean(secondaryVersion);
   const selectedLayout = comparing
-    ? comparisonLayout
+    ? sideBySide
+      ? "side-by-side"
+      : "stacked"
     : secondaryOnly
       ? "secondary"
       : "primary";
@@ -137,7 +160,7 @@ export default function ReaderScreen() {
         const other = getVersions().find(({ id }) => id !== primaryVersion);
         if (other) setSecondaryVersion(other.id);
       }
-      setComparisonLayout(layout);
+      if (!displaySplit) setComparisonLayout(layout);
       if (!showDualView) toggleDualView();
     }
   };
@@ -150,7 +173,17 @@ export default function ReaderScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 16,
+            paddingLeft: outerPadding.left,
+            paddingRight: outerPadding.right,
+            maxWidth: comparing ? undefined : 1060,
+          },
+        ]}
+      >
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Back to library"
@@ -170,7 +203,10 @@ export default function ReaderScreen() {
           accessibilityHint="Choose a book and chapter"
           aria-expanded={passagePickerOpen}
           onPress={() => setPassagePickerOpen(true)}
-          style={styles.heading}
+          style={[
+            styles.heading,
+            verticalSplit && { flex: 0, width: verticalSplit.primary - 60 },
+          ]}
         >
           <View style={styles.passageTitle}>
             <ThemedText numberOfLines={1} style={styles.bookTitle}>
@@ -179,6 +215,7 @@ export default function ReaderScreen() {
             <IconSymbol name="chevron.down" size={14} color={colors.tint} />
           </View>
         </TouchableOpacity>
+        {verticalSplit && <View style={{ flex: 1 }} />}
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Reading options"
@@ -221,6 +258,13 @@ export default function ReaderScreen() {
       {readingMenuOpen && (
         <ReaderOptionsMenu
           selectedLayout={selectedLayout}
+          displayLayout={
+            displaySplit
+              ? displaySplit.axis === "vertical"
+                ? "side-by-side"
+                : "stacked"
+              : undefined
+          }
           onSelectLayout={selectLayout}
           onClose={() => setReadingMenuOpen(false)}
         />
@@ -232,12 +276,23 @@ export default function ReaderScreen() {
             styles.readingArea,
             {
               flexDirection: sideBySide ? "row" : "column",
-              gap: narrow ? 8 : 12,
+              gap: split?.gap ?? (narrow ? 8 : 12),
+              maxWidth: comparing ? undefined : 1060,
+              paddingLeft: outerPadding.left,
+              paddingRight: outerPadding.right,
             },
           ]}
         >
+          <DisplayRegionsObserver
+            pointerEvents="none"
+            style={StyleSheet.absoluteFill}
+            onRegionsChange={({ nativeEvent }) =>
+              setDisplayRegions(nativeEvent)
+            }
+          />
           {sideBySide && secondaryVersion ? (
             <AlignedChapters
+              split={verticalSplit}
               key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
               primary={{
                 chapter: getPrimaryChapter(),
@@ -262,6 +317,7 @@ export default function ReaderScreen() {
             />
           ) : comparing && secondaryVersion ? (
             <StackedChapters
+              split={split?.axis === "horizontal" ? split : null}
               key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
               primary={{
                 chapter: getPrimaryChapter(),
@@ -320,7 +376,12 @@ export default function ReaderScreen() {
       <View
         style={[
           styles.navigation,
-          { paddingBottom: Math.max(insets.bottom, 16) },
+          {
+            paddingBottom: Math.max(insets.bottom, 16),
+            paddingLeft: outerPadding.left,
+            paddingRight: outerPadding.right,
+            maxWidth: comparing ? undefined : 1060,
+          },
         ]}
       >
         <TouchableOpacity
@@ -338,7 +399,12 @@ export default function ReaderScreen() {
         >
           <IconSymbol name="chevron.left" size={19} color={colors.text} />
         </TouchableOpacity>
-        <View style={styles.progress}>
+        <View
+          style={[
+            styles.progress,
+            verticalSplit && { flex: 0, width: verticalSplit.primary - 60 },
+          ]}
+        >
           <ThemedText
             accessibilityLabel={`${chapterIndex + 1} of ${chapters.length} available chapters`}
             style={styles.progressNumbers}
@@ -352,6 +418,7 @@ export default function ReaderScreen() {
             </ThemedText>
           </ThemedText>
         </View>
+        {verticalSplit && <View style={{ flex: 1 }} />}
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Next chapter"
@@ -387,15 +454,27 @@ interface ReadingPane {
 function StackedChapters({
   primary,
   secondary,
+  split,
 }: {
   primary: ReadingPane;
   secondary: ReadingPane;
+  split: ReaderDisplaySplit | null;
 }) {
   const [scrollLink] = useState(createLinkedVerseScroll);
   return (
     <>
       {([primary, secondary] as const).map((pane, index) => (
-        <View key={pane.label} style={styles.pane}>
+        <View
+          key={pane.label}
+          testID={`comparison-pane-${pane.versionId}`}
+          style={[
+            styles.pane,
+            split && {
+              flex: 0,
+              height: index === 0 ? split.primary : split.secondary,
+            },
+          ]}
+        >
           <ChapterView
             {...pane}
             linkedScroll={{ controller: scrollLink, pane: index as 0 | 1 }}
@@ -409,12 +488,18 @@ function StackedChapters({
 function AlignedChapters({
   primary,
   secondary,
+  split,
 }: {
   primary: ReadingPane;
   secondary: ReadingPane;
+  split: ReaderDisplaySplit | null;
 }) {
   const colors = useAppTheme();
   const panes = [primary, secondary];
+  const columnSize = (index: number) =>
+    split
+      ? { flex: 0, width: (index === 0 ? split.primary : split.secondary) - 1 }
+      : undefined;
   const verses = panes.map(
     ({ chapter }) =>
       new Map(chapter?.verses.map((verse) => [verse.verse, verse])),
@@ -430,9 +515,13 @@ function AlignedChapters({
         { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
-      <View style={styles.parallelRow}>
-        {panes.map((pane) => (
-          <View key={pane.label} style={styles.parallelColumn}>
+      <View style={[styles.parallelRow, { gap: split?.gap ?? 0 }]}>
+        {panes.map((pane, index) => (
+          <View
+            key={pane.label}
+            testID={`parallel-header-${pane.versionId}`}
+            style={[styles.parallelColumn, columnSize(index)]}
+          >
             <TranslationSelect
               label={pane.label}
               value={pane.versionId}
@@ -454,7 +543,7 @@ function AlignedChapters({
           <View
             key={number}
             testID={`parallel-verse-${number}`}
-            style={styles.parallelRow}
+            style={[styles.parallelRow, { gap: split?.gap ?? 0 }]}
           >
             {panes.map((pane, index) => (
               <View
@@ -462,6 +551,7 @@ function AlignedChapters({
                 testID={`parallel-${pane.versionId}-verse-${number}`}
                 style={[
                   styles.parallelColumn,
+                  columnSize(index),
                   styles.parallelCell,
                   pane.narrow && styles.narrowParallelCell,
                 ]}
@@ -481,13 +571,15 @@ function AlignedChapters({
           </View>
         ))}
       </ScrollView>
-      <View
-        testID="parallel-divider"
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={[styles.parallelDivider, { borderLeftColor: colors.border }]}
-      />
+      {!split && (
+        <View
+          testID="parallel-divider"
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.parallelDivider, { borderLeftColor: colors.border }]}
+        />
+      )}
     </View>
   );
 }

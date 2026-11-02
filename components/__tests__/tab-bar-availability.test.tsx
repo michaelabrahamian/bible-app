@@ -4,10 +4,7 @@ import {
   isGlassEffectAPIAvailable,
   isLiquidGlassAvailable,
 } from "expo-glass-effect";
-import {
-  getTabContentBottomInset,
-  supportsLiquidGlass,
-} from "@/constants/navigation";
+import { supportsLiquidGlass } from "@/constants/navigation";
 
 jest.mock("expo-glass-effect", () => ({
   isLiquidGlassAvailable: jest.fn(),
@@ -23,7 +20,6 @@ test.each(["android", "web"] as const)(
   (os) => {
     jest.replaceProperty(Platform, "OS", os);
     expect(supportsLiquidGlass()).toBe(false);
-    expect(getTabContentBottomInset(34)).toBeUndefined();
     expect(isLiquidGlassAvailable).not.toHaveBeenCalled();
     expect(isGlassEffectAPIAvailable).not.toHaveBeenCalled();
   },
@@ -40,17 +36,12 @@ test.each([
     jest.mocked(isLiquidGlassAvailable).mockReturnValue(liquid);
     jest.mocked(isGlassEffectAPIAvailable).mockReturnValue(api);
     expect(supportsLiquidGlass()).toBe(false);
-    expect(getTabContentBottomInset(34)).toBeUndefined();
   },
 );
 
-test("supported iOS reserves scroll clearance for the floating bar and safe area", () => {
+test("supported iOS uses the system native tabs", () => {
   jest.replaceProperty(Platform, "OS", "ios");
   jest.mocked(isLiquidGlassAvailable).mockReturnValue(true);
   jest.mocked(isGlassEffectAPIAvailable).mockReturnValue(true);
   expect(supportsLiquidGlass()).toBe(true);
-  expect(getTabContentBottomInset(34)).toBeGreaterThan(
-    getTabContentBottomInset(0)!,
-  );
-  expect(getTabContentBottomInset(0)).toBeGreaterThan(64);
 });

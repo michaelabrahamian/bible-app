@@ -2,7 +2,7 @@ import { ContentNotice } from "@/components/content-notice";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Fonts } from "@/constants/theme";
-import { getTabContentBottomInset } from "@/constants/navigation";
+import { supportsLiquidGlass } from "@/constants/navigation";
 import { useBible } from "@/contexts/bible-context";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { router } from "expo-router";
@@ -15,7 +15,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 interface ReadingPreview {
   bookName: string;
@@ -39,6 +42,7 @@ export default function HomeScreen() {
   } = useBible();
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
+  const nativeTabs = supportsLiquidGlass();
   const [query, setQuery] = useState("");
   const isFocused = useIsFocused();
   const [homePreview, setHomePreview] = useState({
@@ -48,7 +52,10 @@ export default function HomeScreen() {
   // Reset on return before painting, rather than showing the old snapshot for
   // one frame and clearing it in an effect.
   if (homePreview.isFocused !== isFocused) {
-    setHomePreview({ isFocused, opening: isFocused ? null : homePreview.opening });
+    setHomePreview({
+      isFocused,
+      opening: isFocused ? null : homePreview.opening,
+    });
   }
   const books = getBooks();
   const version = getVersions().find(({ id }) => id === navigationVersion);
@@ -75,16 +82,20 @@ export default function HomeScreen() {
   const continueReading = homePreview.opening ?? currentReading;
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={nativeTabs ? [] : ["left", "right"]}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
       <ScrollView
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + 24,
-            paddingBottom: getTabContentBottomInset(insets.bottom) ?? 28,
+            paddingTop: (nativeTabs ? 0 : insets.top) + 24,
+            paddingBottom: 28,
           },
         ]}
         keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior={nativeTabs ? "automatic" : "never"}
       >
         <View style={styles.brandRow}>
           <View style={styles.brand}>
@@ -259,7 +270,7 @@ export default function HomeScreen() {
           A quiet space for the Word.
         </ThemedText>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

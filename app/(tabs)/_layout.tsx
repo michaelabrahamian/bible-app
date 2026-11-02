@@ -1,72 +1,67 @@
 import { Tabs } from "expo-router";
+import { NativeTabs } from "expo-router/native-tabs";
 import React from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { TabBarBackground } from "@/components/tab-bar-background";
-import {
-  BOTTOM_TAB_BAR_HEIGHT,
-  BOTTOM_TAB_BAR_MARGIN,
-  supportsLiquidGlass,
-} from "@/constants/navigation";
+import { supportsLiquidGlass } from "@/constants/navigation";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useWindowDimensions } from "react-native";
 
 export default function TabLayout() {
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const horizontalInset = Math.max(16, (width - 360) / 2);
-  const glass = supportsLiquidGlass();
+
+  if (supportsLiquidGlass()) {
+    // UIKit owns the glass, selection shape, sizing, safe areas and adaptation.
+    // A GlassView behind a JavaScript tab bar does not provide those behaviors.
+    return (
+      <NativeTabs tintColor={colors.tint}>
+        <NativeTabs.Trigger
+          name="index"
+          contentStyle={{ backgroundColor: colors.background }}
+        >
+          <NativeTabs.Trigger.Label>Bible</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: "book", selected: "book.fill" }}
+          />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger
+          name="explore"
+          contentStyle={{ backgroundColor: colors.background }}
+        >
+          <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf="gearshape.fill" />
+        </NativeTabs.Trigger>
+      </NativeTabs>
+    );
+  }
 
   return (
     <Tabs
-      safeAreaInsets={glass ? { bottom: 0 } : undefined}
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
         tabBarInactiveTintColor: colors.secondaryText,
         tabBarActiveBackgroundColor: colors.accentSoft,
-        tabBarBackground: glass ? () => <TabBarBackground /> : undefined,
-        tabBarStyle: glass
-          ? {
-              position: "absolute",
-              left: horizontalInset,
-              right: horizontalInset,
-              bottom: Math.max(insets.bottom, BOTTOM_TAB_BAR_MARGIN),
-              backgroundColor: "transparent",
-              borderTopWidth: 0,
-              borderRadius: 30,
-              elevation: 0,
-              height: BOTTOM_TAB_BAR_HEIGHT,
-              paddingBottom: 4,
-              paddingTop: 4,
-              boxShadow: "0px 4px 20px rgba(0,0,0,0.12)",
-            }
-          : {
-              backgroundColor: colors.surface,
-              borderTopColor: colors.border,
-              elevation: 0,
-              height: 70 + insets.bottom,
-              paddingBottom: insets.bottom + 6,
-              paddingTop: 6,
-            },
-        tabBarItemStyle: glass
-          ? {
-              marginHorizontal: 4,
-              borderRadius: 24,
-            }
-          : {
-              marginHorizontal: 12,
-              borderRadius: 16,
-              overflow: "hidden",
-            },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          elevation: 0,
+          height: 70 + insets.bottom,
+          paddingBottom: insets.bottom + 6,
+          paddingTop: 6,
+        },
+        tabBarItemStyle: {
+          marginHorizontal: 12,
+          borderRadius: 16,
+          overflow: "hidden",
+        },
         tabBarLabelPosition: "below-icon",
         tabBarLabelStyle: {
           fontSize: 10,
           lineHeight: 14,
           fontWeight: "600",
-          marginBottom: glass ? 0 : 5,
+          marginBottom: 5,
         },
         headerShown: false,
         tabBarButton: HapticTab,

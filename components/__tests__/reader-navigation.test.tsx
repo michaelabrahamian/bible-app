@@ -1,7 +1,7 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, Dimensions } from "react-native";
 import type { ReactNode } from "react";
 import { GestureHandlerRootView, State } from "react-native-gesture-handler";
 import {
@@ -40,6 +40,15 @@ jest.mock(
     ).default,
 );
 jest.mock("@/components/ui/icon-symbol", () => ({ IconSymbol: () => null }));
+jest.mock("@/components/display-regions-observer", () => {
+  const { View } =
+    jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    DisplayRegionsObserver: (props: Record<string, unknown>) => (
+      <View {...props} testID="display-regions" />
+    ),
+  };
+});
 jest.mock("expo-router", () => ({
   Stack: { Screen: () => null },
   useLocalSearchParams: jest.fn(() => ({})),
@@ -248,6 +257,109 @@ test("a requested book missing from the visible edition preserves the saved pass
   expect(
     screen.getByRole("button", { name: "Choose passage: John 3" }),
   ).toBeTruthy();
+});
+
+test("an opened dual display puts translations on opposite sides of the fold without replacing the saved layout", async () => {
+  const original = Dimensions.get("window");
+  await act(() =>
+    Dimensions.set({ window: { ...original, width: 750, height: 850 } }),
+  );
+  try {
+    const screen = await reader({
+      showDualView: true,
+      comparisonLayout: "stacked",
+    });
+    const width = 750;
+    const report = {
+      width,
+      height: 600,
+      divisions: [{ x: 350, y: 0, width: 50, height: 600 }],
+    };
+    await fireEvent(screen.getByTestId("display-regions"), "regionsChange", {
+      nativeEvent: report,
+    });
+    const primary = StyleSheet.flatten(
+      screen.getByTestId("parallel-header-kjv").props.style,
+    );
+    const secondary = StyleSheet.flatten(
+      screen.getByTestId("parallel-header-neb").props.style,
+    );
+    expect(primary.width).toBe(333);
+    expect(secondary.width).toBe(333);
+    expect(
+      StyleSheet.flatten(screen.getByTestId("parallel-verse-1").props.style)
+        .gap,
+    ).toBe(50);
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Reading options" }),
+    );
+    expect(
+      screen.getByRole("radio", { name: "Side by side" }).props
+        .accessibilityState.checked,
+    ).toBe(true);
+    expect(
+      screen.getByRole("radio", { name: "Stacked" }).props.accessibilityState
+        .disabled,
+    ).toBe(true);
+    await fireEvent.press(screen.getByRole("radio", { name: "Side by side" }));
+    expect(
+      JSON.parse((await AsyncStorage.getItem(READER_STORAGE_KEY))!)
+        .comparisonLayout,
+    ).toBe("stacked");
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Close reading options" }),
+    );
+    await fireEvent(screen.getByTestId("display-regions"), "regionsChange", {
+      nativeEvent: { width, height: 600, divisions: [] },
+    });
+    expect(screen.getByTestId("chapter-scroll-kjv")).toBeTruthy();
+    expect(screen.getByTestId("chapter-scroll-neb")).toBeTruthy();
+    expect(screen.queryByTestId("parallel-verse-1")).toBeNull();
+    await screen.unmount();
+  } finally {
+    await act(() => Dimensions.set({ window: original }));
+  }
+});
+
+test("a rotated fold uses two linked panes while single-translation reading remains available", async () => {
+  const screen = await reader({
+    showDualView: true,
+    comparisonLayout: "side-by-side",
+    currentChapter: 3,
+  });
+  await fireEvent(screen.getByTestId("display-regions"), "regionsChange", {
+    nativeEvent: {
+      width: Dimensions.get("window").width,
+      height: 600,
+      divisions: [
+        { x: 0, y: 200, width: Dimensions.get("window").width, height: 40 },
+      ],
+    },
+  });
+  expect(
+    StyleSheet.flatten(screen.getByTestId("comparison-pane-kjv").props.style)
+      .height,
+  ).toBe(200);
+  expect(
+    StyleSheet.flatten(screen.getByTestId("comparison-pane-neb").props.style)
+      .height,
+  ).toBe(360);
+  expect(
+    screen.getByRole("button", { name: "Choose passage: Genesis 3" }),
+  ).toBeTruthy();
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Reading options" }),
+  );
+  await fireEvent.press(screen.getByRole("radio", { name: "Primary only" }));
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Close reading options" }),
+  );
+  expect(screen.getByTestId("chapter-scroll-kjv")).toBeTruthy();
+  expect(screen.queryByTestId("chapter-scroll-neb")).toBeNull();
+  expect(
+    JSON.parse((await AsyncStorage.getItem(READER_STORAGE_KEY))!)
+      .comparisonLayout,
+  ).toBe("side-by-side");
 });
 
 test("stacked panes measure verses and scrolling either translation moves its companion", async () => {

@@ -3,7 +3,7 @@ import { ContentNotice } from "@/components/content-notice";
 import { ThemedText } from "@/components/themed-text";
 import { TranslationSelect } from "@/components/translation-select";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { getTabContentBottomInset } from "@/constants/navigation";
+import { supportsLiquidGlass } from "@/constants/navigation";
 import { useBible } from "@/contexts/bible-context";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import {
@@ -14,7 +14,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 export default function SettingsScreen() {
@@ -31,6 +34,7 @@ export default function SettingsScreen() {
   } = useBible();
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
+  const nativeTabs = supportsLiquidGlass();
   const versions = getVersions();
   const notice = versions.find(({ notice }) => Boolean(notice))?.notice;
   const parallelEnabled = Boolean(secondaryVersion) && showDualView;
@@ -43,15 +47,19 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={nativeTabs ? [] : ["left", "right"]}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
       <ScrollView
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: insets.top + 28,
-            paddingBottom: getTabContentBottomInset(insets.bottom) ?? 32,
+            paddingTop: (nativeTabs ? 0 : insets.top) + 28,
+            paddingBottom: 32,
           },
         ]}
+        contentInsetAdjustmentBehavior={nativeTabs ? "automatic" : "never"}
       >
         <View style={styles.header}>
           <ThemedText style={[styles.eyebrow, { color: colors.tint }]}>
@@ -231,7 +239,7 @@ export default function SettingsScreen() {
           </ThemedText>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
