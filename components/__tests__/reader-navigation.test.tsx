@@ -1,7 +1,7 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { StyleSheet } from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import type { ReactNode } from "react";
 import { GestureHandlerRootView, State } from "react-native-gesture-handler";
 import {
@@ -10,6 +10,9 @@ import {
 } from "react-native-gesture-handler/jest-utils";
 import ReaderScreen from "@/app/reader";
 import SettingsScreen from "@/app/(tabs)/explore";
+import HomeScreen from "@/app/(tabs)/index";
+import { router, useLocalSearchParams } from "expo-router";
+import { useIsFocused } from "expo-router/react-navigation";
 import {
   AppearanceProvider,
   useAppearance,
@@ -39,12 +42,24 @@ jest.mock(
 jest.mock("@/components/ui/icon-symbol", () => ({ IconSymbol: () => null }));
 jest.mock("expo-router", () => ({
   Stack: { Screen: () => null },
-  router: { canGoBack: () => false, back: jest.fn(), replace: jest.fn() },
+  useLocalSearchParams: jest.fn(() => ({})),
+  router: {
+    canGoBack: () => false,
+    back: jest.fn(),
+    replace: jest.fn(),
+    push: jest.fn(),
+    setParams: jest.fn(),
+  },
+}));
+jest.mock("expo-router/react-navigation", () => ({
+  useIsFocused: jest.fn(() => true),
 }));
 
 beforeEach(async () => {
   await AsyncStorage.clear();
   jest.clearAllMocks();
+  jest.mocked(useIsFocused).mockReturnValue(true);
+  jest.mocked(useLocalSearchParams).mockReturnValue({});
 });
 
 function ReadyReader() {
@@ -102,6 +117,138 @@ async function swipe(
     ]),
   );
 }
+
+test("choosing a library book leaves the continue card and stored passage unchanged until the reader opens", async () => {
+  const screen = await reader({ currentBookName: "John", currentChapter: 3 });
+  await screen.rerender(
+    <TestProviders>
+      <HomeScreen />
+    </TestProviders>,
+  );
+  const previousVerse = getChapterByName("kjv", "John", 3)!.verses[0].text;
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Read Exodus, 40 chapters" }),
+  );
+  expect(router.push).toHaveBeenCalledWith({
+    pathname: "/reader",
+    params: { book: "Exodus" },
+  });
+  expect(
+    screen.getByRole("button", { name: "Continue reading John chapter 3" }),
+  ).toBeTruthy();
+  expect(screen.getByText(previousVerse)).toBeTruthy();
+  expect(
+    JSON.parse((await AsyncStorage.getItem(READER_STORAGE_KEY))!),
+  ).toMatchObject({ currentBookName: "John", currentChapter: 3 });
+});
+
+test("the reader applies a requested book only when focused, and never replays it on return", async () => {
+  jest.mocked(useLocalSearchParams).mockReturnValue({ book: "Exodus" });
+  jest.mocked(useIsFocused).mockReturnValue(false);
+  const screen = await reader({ currentBookName: "John", currentChapter: 3 });
+  expect(
+    screen.getByRole("button", { name: "Choose passage: John 3" }),
+  ).toBeTruthy();
+  expect(
+    JSON.parse((await AsyncStorage.getItem(READER_STORAGE_KEY))!),
+  ).toMatchObject({ currentBookName: "John", currentChapter: 3 });
+  jest.mocked(useIsFocused).mockReturnValue(true);
+  await screen.rerender(
+    <TestProviders>
+      <ReadyReader />
+    </TestProviders>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Choose passage: Exodus 1" }),
+  ).toBeTruthy();
+  await waitFor(async () =>
+    expect(
+      JSON.parse((await AsyncStorage.getItem(READER_STORAGE_KEY))!),
+    ).toMatchObject({ currentBookName: "Exodus", currentChapter: 1 }),
+  );
+  expect(router.setParams).toHaveBeenCalledWith({ book: undefined });
+  await fireEvent.press(screen.getByRole("button", { name: "Next chapter" }));
+  jest.mocked(useIsFocused).mockReturnValue(false);
+  await screen.rerender(
+    <TestProviders>
+      <ReadyReader />
+    </TestProviders>,
+  );
+  jest.mocked(useIsFocused).mockReturnValue(true);
+  await screen.rerender(
+    <TestProviders>
+      <ReadyReader />
+    </TestProviders>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Choose passage: Exodus 2" }),
+  ).toBeTruthy();
+});
+
+function UpdateReadingPlace() {
+  const { setPassage } = useBible();
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel="Update reading place"
+      onPress={() => setPassage("Exodus", 2)}
+    >
+      <Text>Update</Text>
+    </TouchableOpacity>
+  );
+}
+
+test("the outgoing home preview stays frozen as the reader changes passage and refreshes on return", async () => {
+  const screen = await reader({ currentBookName: "John", currentChapter: 3 });
+  const home = (
+    <TestProviders>
+      <HomeScreen />
+      <UpdateReadingPlace />
+    </TestProviders>
+  );
+  await screen.rerender(home);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Read Exodus, 40 chapters" }),
+  );
+  jest.mocked(useIsFocused).mockReturnValue(false);
+  await screen.rerender(home);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Update reading place" }),
+  );
+  expect(
+    screen.getByRole("button", { name: "Continue reading John chapter 3" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByText(getChapterByName("kjv", "John", 3)!.verses[0].text),
+  ).toBeTruthy();
+  jest.mocked(useIsFocused).mockReturnValue(true);
+  // A new element models the navigation focus update even though context is unchanged.
+  await screen.rerender(
+    <TestProviders>
+      <HomeScreen />
+      <UpdateReadingPlace />
+    </TestProviders>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Continue reading Exodus chapter 2" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByText(getChapterByName("kjv", "Exodus", 2)!.verses[0].text),
+  ).toBeTruthy();
+});
+
+test("a requested book missing from the visible edition preserves the saved passage", async () => {
+  jest.mocked(useLocalSearchParams).mockReturnValue({ book: "Esther" });
+  const screen = await reader({
+    primaryVersion: "neb",
+    secondaryVersion: "kjv",
+    currentBookName: "John",
+    currentChapter: 3,
+  });
+  expect(
+    screen.getByRole("button", { name: "Choose passage: John 3" }),
+  ).toBeTruthy();
+});
 
 test("stacked panes measure verses and scrolling either translation moves its companion", async () => {
   const link = scrollLinks.createLinkedVerseScroll();

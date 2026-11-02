@@ -7,6 +7,7 @@ import { useBible } from "@/contexts/bible-context";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { router } from "expo-router";
 import { useState } from "react";
+import { useIsFocused } from "expo-router/react-navigation";
 import {
   ScrollView,
   StyleSheet,
@@ -16,10 +17,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+interface ReadingPreview {
+  bookName: string;
+  chapter: number;
+  text?: string;
+  versionName?: string;
+}
+
 export default function HomeScreen() {
   const {
     getBooks,
-    setCurrentBook,
     getCurrentBookName,
     currentChapter,
     navigationVersion,
@@ -33,6 +40,16 @@ export default function HomeScreen() {
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
+  const isFocused = useIsFocused();
+  const [homePreview, setHomePreview] = useState({
+    isFocused,
+    opening: null as ReadingPreview | null,
+  });
+  // Reset on return before painting, rather than showing the old snapshot for
+  // one frame and clearing it in an effect.
+  if (homePreview.isFocused !== isFocused) {
+    setHomePreview({ isFocused, opening: isFocused ? null : homePreview.opening });
+  }
   const books = getBooks();
   const version = getVersions().find(({ id }) => id === navigationVersion);
   const filtered = books
@@ -47,6 +64,15 @@ export default function HomeScreen() {
     : version;
   const preview = (secondaryOnly ? getSecondaryChapter() : getPrimaryChapter())
     ?.verses[0]?.text;
+  const currentReading: ReadingPreview = {
+    bookName: getCurrentBookName(),
+    chapter: currentChapter,
+    text: preview,
+    versionName: readingVersion?.name,
+  };
+  // Keep the outgoing card stable even while the reader commits its new book.
+  // Returning to the library releases this snapshot and shows the latest place.
+  const continueReading = homePreview.opening ?? currentReading;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -95,7 +121,7 @@ export default function HomeScreen() {
           activeOpacity={0.9}
           style={[styles.continueCard, { backgroundColor: colors.hero }]}
           accessibilityRole="button"
-          accessibilityLabel={`Continue reading ${getCurrentBookName()} chapter ${currentChapter}`}
+          accessibilityLabel={`Continue reading ${continueReading.bookName} chapter ${continueReading.chapter}`}
           onPress={() => router.push("/reader")}
         >
           <View style={styles.cardTop}>
@@ -105,21 +131,21 @@ export default function HomeScreen() {
             <IconSymbol name="book" size={21} color={colors.gold} />
           </View>
           <ThemedText style={[styles.passageTitle, { color: colors.heroText }]}>
-            {getCurrentBookName()} {currentChapter}
+            {continueReading.bookName} {continueReading.chapter}
           </ThemedText>
-          {preview && (
+          {continueReading.text && (
             <ThemedText
               numberOfLines={2}
               style={[styles.preview, { color: colors.heroMuted }]}
             >
-              {preview}
+              {continueReading.text}
             </ThemedText>
           )}
           <View style={styles.cardBottom}>
             <ThemedText
               style={[styles.heroVersion, { color: colors.heroMuted }]}
             >
-              {readingVersion?.name}
+              {continueReading.versionName}
             </ThemedText>
             <View
               style={[
@@ -195,8 +221,11 @@ export default function HomeScreen() {
                 },
               ]}
               onPress={() => {
-                setCurrentBook(index);
-                router.push("/reader");
+                setHomePreview({ isFocused, opening: currentReading });
+                router.push({
+                  pathname: "/reader",
+                  params: { book: book.name },
+                });
               }}
             >
               <ThemedText

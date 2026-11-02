@@ -20,8 +20,9 @@ import {
   type Chapter,
   type Verse,
 } from "@/services/bible-service";
-import { useState } from "react";
-import { router, Stack } from "expo-router";
+import { useLayoutEffect, useRef, useState } from "react";
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useIsFocused } from "expo-router/react-navigation";
 import {
   StyleSheet,
   Platform,
@@ -45,6 +46,7 @@ export default function ReaderScreen() {
     showDualView,
     toggleDualView,
     setPassage,
+    setCurrentBook,
     moveChapter,
     getPrimaryChapter,
     getSecondaryChapter,
@@ -59,6 +61,24 @@ export default function ReaderScreen() {
     singlePane,
     setSinglePane,
   } = useBible();
+  const { book: requestedBook } = useLocalSearchParams<{
+    book?: string | string[];
+  }>();
+  const isFocused = useIsFocused();
+  const openedBook = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (
+      !isFocused ||
+      typeof requestedBook !== "string" ||
+      openedBook.current === requestedBook
+    )
+      return;
+    openedBook.current = requestedBook;
+    const index = getBooks().findIndex(({ name }) => name === requestedBook);
+    if (index >= 0) setCurrentBook(index);
+    // Consume the request so refocusing cannot reset later chapter navigation.
+    router.setParams({ book: undefined });
+  }, [isFocused, requestedBook, getBooks, setCurrentBook]);
   const [readingMenuOpen, setReadingMenuOpen] = useState(false);
   const [passagePickerOpen, setPassagePickerOpen] = useState(false);
   const colors = useAppTheme();

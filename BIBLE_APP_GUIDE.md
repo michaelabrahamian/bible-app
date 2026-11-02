@@ -1,6 +1,6 @@
 # Reader guide
 
-The **Bible** tab shows your saved passage and lists books in the visible navigation translation. Use **Find a book** to filter the list by book name, or tap the reading card to resume. Select a book to open its first available chapter.
+The **Bible** tab shows your saved passage and lists books in the visible navigation translation. Use **Find a book** to filter the list by book name, or tap the reading card to resume. Select a book to open its first available chapter. The saved passage changes when the reader becomes active; the outgoing Continue reading card stays unchanged during navigation and refreshes when you return.
 
 On the reader, tap the compact book/chapter reference (for example, **Proverbs 24**) to open **Go to passage**. Choose a chapter directly, or tap the book name to search for another book and then choose its chapter. The reading position changes only after choosing a chapter; closing the picker cancels the selection. The picker follows the visible translation's available books and chapters. The sheet opens over a stationary backdrop, and respects the phone's Reduce Motion preference.
 
