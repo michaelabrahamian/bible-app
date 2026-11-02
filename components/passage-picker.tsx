@@ -2,8 +2,9 @@ import { ReaderSheet } from "@/components/reader-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useScrollToSelection } from "@/hooks/use-scroll-to-selection";
 import type { Book } from "@/services/bible-service";
-import { useRef, useState, type ComponentRef } from "react";
+import { useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -27,7 +28,18 @@ export function PassagePicker({
 }) {
   const colors = useAppTheme();
   const { width, fontScale } = useWindowDimensions();
-  const chapterList = useRef<ComponentRef<typeof ScrollView>>(null);
+  const {
+    attach: attachBookList,
+    onLayout: measureBookViewport,
+    onContentSizeChange: measureBookContent,
+    onSelectionLayout: measureSelectedBook,
+  } = useScrollToSelection();
+  const {
+    attach: attachChapterList,
+    onLayout: measureChapterViewport,
+    onContentSizeChange: measureChapterContent,
+    onSelectionLayout: measureSelectedChapter,
+  } = useScrollToSelection();
   const contentWidth = Math.min(width, 560) - 40;
   const columns = Math.max(
     2,
@@ -99,6 +111,10 @@ export function PassagePicker({
             ]}
           />
           <ScrollView
+            key={`books:${query.trim().toLocaleLowerCase()}`}
+            ref={attachBookList}
+            onLayout={measureBookViewport}
+            onContentSizeChange={measureBookContent}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             contentContainerStyle={styles.books}
@@ -114,6 +130,11 @@ export function PassagePicker({
                 accessibilityState={{
                   selected: book.name === selectedBook?.name,
                 }}
+                onLayout={
+                  book.name === selectedBook?.name
+                    ? measureSelectedBook
+                    : undefined
+                }
                 onPress={() => {
                   setBookName(book.name);
                   setChoosingBook(false);
@@ -142,8 +163,10 @@ export function PassagePicker({
             Choose a chapter
           </ThemedText>
           <ScrollView
-            key={selectedBook?.name}
-            ref={chapterList}
+            key={`chapters:${selectedBook?.name}`}
+            ref={attachChapterList}
+            onLayout={measureChapterViewport}
+            onContentSizeChange={measureChapterContent}
             contentContainerStyle={styles.chapters}
           >
             {chapters.map((chapter) => {
@@ -156,16 +179,7 @@ export function PassagePicker({
                   accessibilityRole="button"
                   accessibilityLabel={`${selectedBook.name} chapter ${chapter}`}
                   accessibilityState={{ selected }}
-                  onLayout={
-                    selected
-                      ? ({ nativeEvent: { layout } }) => {
-                          chapterList.current?.scrollTo({
-                            y: Math.max(0, layout.y - 56),
-                            animated: false,
-                          });
-                        }
-                      : undefined
-                  }
+                  onLayout={selected ? measureSelectedChapter : undefined}
                   onPress={() => onSelect(selectedBook.name, chapter)}
                   style={[
                     styles.chapter,
