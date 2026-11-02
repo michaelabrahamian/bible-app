@@ -15,17 +15,23 @@ interface ReaderState {
   primaryVersion: string;
   secondaryVersion: string | null;
   currentBookIndex: number;
+  currentBookName: string;
   currentChapter: number;
   showDualView: boolean;
+  comparisonLayout: "side-by-side" | "stacked";
+  singlePane: "primary" | "secondary";
 }
 
 interface BibleContextType extends ReaderState {
+  navigationVersion: string;
   isReady: boolean;
   setPrimaryVersion: (versionId: string) => void;
   setSecondaryVersion: (versionId: string | null) => void;
   setCurrentBook: (bookIndex: number) => void;
   setCurrentChapter: (chapter: number) => void;
   toggleDualView: () => void;
+  setComparisonLayout: (layout: ReaderState["comparisonLayout"]) => void;
+  setSinglePane: (pane: ReaderState["singlePane"]) => void;
   getVersions: () => BibleService.BibleVersion[];
   getBooks: () => BibleService.Book[];
   getChapterNumbers: () => number[];
@@ -36,47 +42,104 @@ interface BibleContextType extends ReaderState {
 
 const DEFAULT_STATE: ReaderState = {
   primaryVersion: "kjv",
-  secondaryVersion: "armenian",
+  secondaryVersion: "neb",
   currentBookIndex: 0,
+  currentBookName: "Genesis",
   currentChapter: 1,
   showDualView: true,
+  comparisonLayout: "side-by-side",
+  singlePane: "primary",
 };
+
+// Parallel reading follows the primary edition; single-pane reading follows
+// the visible edition. Translation roles remain unchanged.
+function navigationVersion(
+  state: Pick<
+    ReaderState,
+    "primaryVersion" | "secondaryVersion" | "showDualView" | "singlePane"
+  >,
+): string {
+  return !state.showDualView &&
+    state.singlePane === "secondary" &&
+    state.secondaryVersion
+    ? state.secondaryVersion
+    : state.primaryVersion;
+}
 
 function normalizeState(value: unknown): ReaderState {
   const saved =
     value && typeof value === "object" ? (value as Partial<ReaderState>) : {};
   const versions = BibleService.getVersions().map(({ id }) => id);
-  const primaryVersion = versions.includes(saved.primaryVersion ?? "")
-    ? saved.primaryVersion!
+  const savedPrimary =
+    saved.primaryVersion === "armenian" ? "neb" : saved.primaryVersion;
+  const savedSecondary =
+    saved.secondaryVersion === "armenian" ? "neb" : saved.secondaryVersion;
+  const primaryVersion = versions.includes(savedPrimary ?? "")
+    ? savedPrimary!
     : DEFAULT_STATE.primaryVersion;
-  const secondaryVersion =
-    saved.secondaryVersion === null
+  const candidateSecondary =
+    savedSecondary === null
       ? null
-      : versions.includes(saved.secondaryVersion ?? "")
-        ? saved.secondaryVersion!
+      : versions.includes(savedSecondary ?? "")
+        ? savedSecondary!
         : DEFAULT_STATE.secondaryVersion;
-  const books = BibleService.getBooks(primaryVersion);
-  const currentBookIndex =
-    Number.isInteger(saved.currentBookIndex) && books[saved.currentBookIndex!]
-      ? saved.currentBookIndex!
-      : 0;
-  const chapters = BibleService.getChapterNumbers(
+  const secondaryVersion =
+    candidateSecondary === primaryVersion ? null : candidateSecondary;
+  const showDualView =
+    typeof saved.showDualView === "boolean"
+      ? saved.showDualView
+      : DEFAULT_STATE.showDualView;
+  const singlePane = saved.singlePane === "secondary" ? "secondary" : "primary";
+  const activeVersion = navigationVersion({
     primaryVersion,
+    secondaryVersion,
+    showDualView,
+    singlePane,
+  });
+  const books = BibleService.getBooks(activeVersion);
+
+  // Older v1 preferences stored an index into the primary catalogue even in
+  // secondary-only mode. Resolve that legacy position once, then persist a name.
+  const oldArmenianBooks = [
+    "Genesis",
+    "Exodus",
+    "Matthew",
+    "Mark",
+    "Luke",
+    "John",
+  ];
+  const legacyIndex = Number.isInteger(saved.currentBookIndex)
+    ? saved.currentBookIndex!
+    : 0;
+  const legacyBookName =
+    saved.primaryVersion === "armenian"
+      ? oldArmenianBooks[legacyIndex]
+      : BibleService.getBookName(primaryVersion, legacyIndex);
+  const requestedBookName =
+    typeof saved.currentBookName === "string"
+      ? saved.currentBookName
+      : legacyBookName;
+  const currentBookIndex = Math.max(
+    0,
+    books.findIndex(({ name }) => name === requestedBookName),
+  );
+  const currentBookName = books[currentBookIndex].name;
+  const chapters = BibleService.getChapterNumbers(
+    activeVersion,
     currentBookIndex,
   );
-
   return {
     primaryVersion,
-    secondaryVersion:
-      secondaryVersion === primaryVersion ? null : secondaryVersion,
+    secondaryVersion,
     currentBookIndex,
+    currentBookName,
     currentChapter: chapters.includes(saved.currentChapter ?? -1)
       ? saved.currentChapter!
       : (chapters[0] ?? 1),
-    showDualView:
-      typeof saved.showDualView === "boolean"
-        ? saved.showDualView
-        : DEFAULT_STATE.showDualView,
+    showDualView,
+    comparisonLayout:
+      saved.comparisonLayout === "stacked" ? "stacked" : "side-by-side",
+    singlePane,
   };
 }
 
@@ -119,24 +182,16 @@ export function BibleProvider({ children }: { children: ReactNode }) {
   const setPrimaryVersion = (primaryVersion: string) => {
     if (!BibleService.getVersions().some(({ id }) => id === primaryVersion))
       return;
-    setState((previous) => {
-      const bookName = BibleService.getBookName(
-        previous.primaryVersion,
-        previous.currentBookIndex,
-      );
-      const bookIndex = BibleService.getBooks(primaryVersion).findIndex(
-        ({ name }) => name === bookName,
-      );
-      return normalizeState({
+    setState((previous) =>
+      normalizeState({
         ...previous,
         primaryVersion,
-        currentBookIndex: Math.max(0, bookIndex),
         secondaryVersion:
           previous.secondaryVersion === primaryVersion
             ? previous.primaryVersion
             : previous.secondaryVersion,
-      });
-    });
+      }),
+    );
   };
 
   const setSecondaryVersion = (secondaryVersion: string | null) => {
@@ -145,20 +200,25 @@ export function BibleProvider({ children }: { children: ReactNode }) {
       !BibleService.getVersions().some(({ id }) => id === secondaryVersion)
     )
       return;
-    setState((previous) => ({
-      ...previous,
-      secondaryVersion:
-        secondaryVersion === previous.primaryVersion ? null : secondaryVersion,
-    }));
+    setState((previous) =>
+      normalizeState({
+        ...previous,
+        secondaryVersion:
+          secondaryVersion === previous.primaryVersion
+            ? null
+            : secondaryVersion,
+      }),
+    );
   };
 
-  const getCurrentBookName = () =>
-    BibleService.getBookName(state.primaryVersion, state.currentBookIndex);
+  const activeVersion = navigationVersion(state);
+  const getCurrentBookName = () => state.currentBookName;
 
   return (
     <BibleContext.Provider
       value={{
         ...state,
+        navigationVersion: activeVersion,
         isReady,
         setPrimaryVersion,
         setSecondaryVersion,
@@ -167,6 +227,10 @@ export function BibleProvider({ children }: { children: ReactNode }) {
             normalizeState({
               ...previous,
               currentBookIndex,
+              currentBookName: BibleService.getBookName(
+                navigationVersion(previous),
+                currentBookIndex,
+              ),
               currentChapter: undefined,
             }),
           ),
@@ -175,21 +239,31 @@ export function BibleProvider({ children }: { children: ReactNode }) {
             normalizeState({ ...previous, currentChapter }),
           ),
         toggleDualView: () =>
-          setState((previous) => ({
-            ...previous,
-            showDualView: !previous.showDualView,
-          })),
-        getVersions: BibleService.getVersions,
-        getBooks: () => BibleService.getBooks(state.primaryVersion),
-        getChapterNumbers: () =>
-          BibleService.getChapterNumbers(
-            state.primaryVersion,
-            state.currentBookIndex,
+          setState((previous) =>
+            normalizeState({
+              ...previous,
+              showDualView: !previous.showDualView,
+            }),
           ),
+        setComparisonLayout: (comparisonLayout) => {
+          if (
+            comparisonLayout === "side-by-side" ||
+            comparisonLayout === "stacked"
+          )
+            setState((previous) => ({ ...previous, comparisonLayout }));
+        },
+        setSinglePane: (singlePane) => {
+          if (singlePane === "primary" || singlePane === "secondary")
+            setState((previous) => normalizeState({ ...previous, singlePane }));
+        },
+        getVersions: BibleService.getVersions,
+        getBooks: () => BibleService.getBooks(activeVersion),
+        getChapterNumbers: () =>
+          BibleService.getChapterNumbers(activeVersion, state.currentBookIndex),
         getPrimaryChapter: () =>
-          BibleService.getChapter(
+          BibleService.getChapterByName(
             state.primaryVersion,
-            state.currentBookIndex,
+            state.currentBookName,
             state.currentChapter,
           ),
         getSecondaryChapter: () =>

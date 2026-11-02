@@ -31,6 +31,17 @@ const MAPPING = {
   circle: "radio-button-unchecked",
   square: "crop-square",
   "square.split.2x1": "view-column",
+  "info.circle": "info-outline",
+  magnifyingglass: "search",
+  "arrow.right": "arrow-forward",
+  "arrow.left": "arrow-back",
+  xmark: "close",
+  checkmark: "check",
+  "text.alignleft": "format-align-left",
+  "rectangle.split.2x1": "view-column",
+  "rectangle.split.1x2": "view-agenda",
+  "chevron.down": "expand-more",
+  lock: "lock-outline",
 } satisfies IconMapping;
 
 /**
