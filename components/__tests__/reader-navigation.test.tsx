@@ -1,12 +1,20 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
+import type { ReactNode } from "react";
 import { GestureHandlerRootView, State } from "react-native-gesture-handler";
 import {
   fireGestureHandler,
   getByGestureTestId,
 } from "react-native-gesture-handler/jest-utils";
 import ReaderScreen from "@/app/reader";
+import SettingsScreen from "@/app/(tabs)/explore";
+import {
+  AppearanceProvider,
+  useAppearance,
+} from "@/contexts/appearance-context";
+import { getChapterByName } from "@/services/bible-service";
 import {
   BibleProvider,
   READER_STORAGE_KEY,
@@ -39,7 +47,19 @@ beforeEach(async () => {
 });
 
 function ReadyReader() {
-  return useBible().isReady ? <ReaderScreen /> : null;
+  const { isReady } = useBible();
+  const { isReady: appearanceReady } = useAppearance();
+  return isReady && appearanceReady ? <ReaderScreen /> : null;
+}
+
+function TestProviders({ children }: { children: ReactNode }) {
+  return (
+    <GestureHandlerRootView>
+      <AppearanceProvider>
+        <BibleProvider>{children}</BibleProvider>
+      </AppearanceProvider>
+    </GestureHandlerRootView>
+  );
 }
 
 async function reader(saved: Record<string, unknown> = {}) {
@@ -56,11 +76,9 @@ async function reader(saved: Record<string, unknown> = {}) {
     }),
   );
   const result = await render(
-    <GestureHandlerRootView>
-      <BibleProvider>
-        <ReadyReader />
-      </BibleProvider>
-    </GestureHandlerRootView>,
+    <TestProviders>
+      <ReadyReader />
+    </TestProviders>,
   );
   await waitFor(() =>
     expect(
@@ -121,7 +139,12 @@ test("searching and choosing a new book and chapter commits one passage", async 
   ).toBeTruthy();
   await waitFor(() => {
     const saved = JSON.parse(
-      String(jest.mocked(AsyncStorage.setItem).mock.calls.at(-1)?.[1]),
+      String(
+        jest
+          .mocked(AsyncStorage.setItem)
+          .mock.calls.filter(([key]) => key === READER_STORAGE_KEY)
+          .at(-1)?.[1],
+      ),
     );
     expect(saved.currentBookName).toBe("John");
     expect(saved.currentChapter).toBe(16);
@@ -284,4 +307,153 @@ test("navigation skips missing chapter numbers and empty books", () => {
   });
   expect(getAdjacentPassage(books, "First", 1, -1)).toBeUndefined();
   expect(getAdjacentPassage(books, "Second", 5, 1)).toBeUndefined();
+});
+
+test("reader and Settings share live text size, theme and appearance controls", async () => {
+  const screen = await reader();
+  const verse = getChapterByName("kjv", "Genesis", 1)!.verses[0].text;
+  const fontSize = () =>
+    StyleSheet.flatten(screen.getByText(verse).props.style).fontSize;
+  expect(fontSize()).toBe(19);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Reading options" }),
+  );
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Increase reading text size" }),
+  );
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Increase reading text size" }),
+  );
+  expect(screen.getByLabelText("Reading text size: 120%")).toBeTruthy();
+  await fireEvent.press(screen.getByRole("radio", { name: "Cream theme" }));
+  await fireEvent.press(screen.getByRole("radio", { name: "Dark appearance" }));
+  expect(
+    screen.getByRole("radio", { name: "Cream theme" }).props.accessibilityState
+      .checked,
+  ).toBe(true);
+  expect(
+    screen.getByRole("radio", { name: "Dark appearance" }).props
+      .accessibilityState.checked,
+  ).toBe(true);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Close reading options" }),
+  );
+  expect(fontSize()).toBeCloseTo(22.8);
+
+  await screen.rerender(
+    <TestProviders>
+      <SettingsScreen />
+    </TestProviders>,
+  );
+  expect(screen.getByLabelText("Reading text size: 120%")).toBeTruthy();
+  expect(
+    screen.getByRole("radio", { name: "Cream theme" }).props.accessibilityState
+      .checked,
+  ).toBe(true);
+  expect(
+    screen.getByRole("radio", { name: "Dark appearance" }).props
+      .accessibilityState.checked,
+  ).toBe(true);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Increase reading text size" }),
+  );
+  await fireEvent.press(screen.getByRole("radio", { name: "Ocean theme" }));
+  await fireEvent.press(
+    screen.getByRole("radio", { name: "Light appearance" }),
+  );
+
+  await screen.rerender(
+    <TestProviders>
+      <ReadyReader />
+    </TestProviders>,
+  );
+  expect(fontSize()).toBeCloseTo(24.7);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Reading options" }),
+  );
+  expect(
+    screen.getByRole("radio", { name: "Ocean theme" }).props.accessibilityState
+      .checked,
+  ).toBe(true);
+  expect(
+    screen.getByRole("radio", { name: "Light appearance" }).props
+      .accessibilityState.checked,
+  ).toBe(true);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Reset reading text size" }),
+  );
+  expect(screen.getByLabelText("Reading text size: 100%")).toBeTruthy();
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Close reading options" }),
+  );
+  expect(fontSize()).toBe(19);
+});
+
+test("text size is bounded and both reading panes scale together", async () => {
+  const screen = await reader({ showDualView: true });
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Reading options" }),
+  );
+  for (let n = 0; n < 8; n++)
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Increase reading text size" }),
+    );
+  expect(screen.getByLabelText("Reading text size: 180%")).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Increase reading text size" }).props
+      .accessibilityState.disabled,
+  ).toBe(true);
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Close reading options" }),
+  );
+  for (const version of ["kjv", "neb"]) {
+    const verse = getChapterByName(version, "Genesis", 1)!.verses[0].text;
+    expect(
+      StyleSheet.flatten(screen.getByText(verse).props.style).fontSize,
+    ).toBeCloseTo(34.2);
+    expect(
+      StyleSheet.flatten(screen.getByText(verse).props.style).lineHeight,
+    ).toBeCloseTo(57.6);
+  }
+  expect(
+    screen.getByTestId("parallel-divider", { includeHiddenElements: true }),
+  ).toBeTruthy();
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Reading options" }),
+  );
+  for (let n = 0; n < 10; n++)
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Decrease reading text size" }),
+    );
+  expect(screen.getByLabelText("Reading text size: 80%")).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Decrease reading text size" }).props
+      .accessibilityState.disabled,
+  ).toBe(true);
+});
+
+test("reading options retains the four layouts without changing the passage", async () => {
+  const screen = await reader({ currentBookName: "John", currentChapter: 3 });
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Reading options" }),
+  );
+  for (const layout of [
+    "Secondary only",
+    "Side by side",
+    "Stacked",
+    "Primary only",
+  ]) {
+    await fireEvent.press(screen.getByRole("radio", { name: layout }));
+    expect(
+      screen.getByRole("radio", { name: layout }).props.accessibilityState
+        .checked,
+    ).toBe(true);
+    expect(screen.getByText("Reading options")).toBeTruthy();
+  }
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Close reading options" }),
+  );
+  expect(
+    screen.getByRole("button", { name: "Choose passage: John 3" }),
+  ).toBeTruthy();
 });

@@ -1,21 +1,16 @@
+import { ReaderSheet } from "@/components/reader-sheet";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import type { Book } from "@/services/bible-service";
 import { useRef, useState, type ComponentRef } from "react";
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   useWindowDimensions,
-  View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export function PassagePicker({
   books,
@@ -31,7 +26,6 @@ export function PassagePicker({
   onClose: () => void;
 }) {
   const colors = useAppTheme();
-  const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
   const chapterList = useRef<ComponentRef<typeof ScrollView>>(null);
   const contentWidth = Math.min(width, 560) - 40;
@@ -52,218 +46,155 @@ export function PassagePicker({
   );
 
   return (
-    <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <ReaderSheet
+      title="Go to passage"
+      closeLabel="Close passage picker"
+      dismissLabel="Dismiss passage picker"
+      onClose={onClose}
+    >
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={
+          choosingBook
+            ? "Back to chapters"
+            : `Choose book: ${selectedBook?.name}`
+        }
+        onPress={() => {
+          setQuery("");
+          setChoosingBook(!choosingBook);
+        }}
+        style={[
+          styles.bookChoice,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss passage picker"
-          onPress={onClose}
-          style={styles.backdrop}
+        <IconSymbol name="book" size={20} color={colors.tint} />
+        <ThemedText numberOfLines={1} style={styles.bookName}>
+          {selectedBook?.name}
+        </ThemedText>
+        <IconSymbol
+          name={choosingBook ? "chevron.left" : "chevron.down"}
+          size={18}
+          color={colors.secondaryText}
         />
-        <View
-          accessibilityViewIsModal
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.background,
-              marginTop: insets.top + 16,
-              paddingBottom: Math.max(insets.bottom, 16),
-            },
-          ]}
-        >
-          <View style={styles.header}>
-            <ThemedText accessibilityRole="header" style={styles.title}>
-              Go to passage
-            </ThemedText>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Close passage picker"
-              onPress={onClose}
-              style={[styles.close, { backgroundColor: colors.surfaceMuted }]}
-            >
-              <IconSymbol name="xmark" size={20} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={
-              choosingBook
-                ? "Back to chapters"
-                : `Choose book: ${selectedBook?.name}`
-            }
-            onPress={() => {
-              setQuery("");
-              setChoosingBook(!choosingBook);
-            }}
+      </TouchableOpacity>
+      {choosingBook ? (
+        <>
+          <TextInput
+            accessibilityLabel="Search books"
+            placeholder="Find a book"
+            placeholderTextColor={colors.secondaryText}
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
             style={[
-              styles.bookChoice,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              styles.search,
+              {
+                color: colors.text,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
             ]}
+          />
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={styles.books}
           >
-            <IconSymbol name="book" size={20} color={colors.tint} />
-            <ThemedText numberOfLines={1} style={styles.bookName}>
-              {selectedBook?.name}
-            </ThemedText>
-            <IconSymbol
-              name={choosingBook ? "chevron.left" : "chevron.down"}
-              size={18}
-              color={colors.secondaryText}
-            />
-          </TouchableOpacity>
-          {choosingBook ? (
-            <>
-              <TextInput
-                accessibilityLabel="Search books"
-                placeholder="Find a book"
-                placeholderTextColor={colors.secondaryText}
-                value={query}
-                onChangeText={setQuery}
-                autoCorrect={false}
-                autoCapitalize="none"
-                returnKeyType="search"
+            {!filteredBooks.length && (
+              <ThemedText style={styles.empty}>No matching books</ThemedText>
+            )}
+            {filteredBooks.map((book) => (
+              <TouchableOpacity
+                key={book.name}
+                accessibilityRole="button"
+                accessibilityLabel={`Choose ${book.name}`}
+                accessibilityState={{
+                  selected: book.name === selectedBook?.name,
+                }}
+                onPress={() => {
+                  setBookName(book.name);
+                  setChoosingBook(false);
+                  setQuery("");
+                }}
                 style={[
-                  styles.search,
-                  {
-                    color: colors.text,
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
+                  styles.book,
+                  book.name === selectedBook?.name && {
+                    backgroundColor: colors.accentSoft,
                   },
                 ]}
-              />
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-                contentContainerStyle={styles.books}
               >
-                {!filteredBooks.length && (
-                  <ThemedText style={styles.empty}>
-                    No matching books
-                  </ThemedText>
-                )}
-                {filteredBooks.map((book) => (
-                  <TouchableOpacity
-                    key={book.name}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Choose ${book.name}`}
-                    accessibilityState={{
-                      selected: book.name === selectedBook?.name,
-                    }}
-                    onPress={() => {
-                      setBookName(book.name);
-                      setChoosingBook(false);
-                      setQuery("");
-                    }}
+                <ThemedText style={styles.bookName}>{book.name}</ThemedText>
+                <IconSymbol
+                  name="chevron.right"
+                  size={18}
+                  color={colors.tint}
+                />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </>
+      ) : (
+        <>
+          <ThemedText style={[styles.hint, { color: colors.secondaryText }]}>
+            Choose a chapter
+          </ThemedText>
+          <ScrollView
+            key={selectedBook?.name}
+            ref={chapterList}
+            contentContainerStyle={styles.chapters}
+          >
+            {chapters.map((chapter) => {
+              const selected =
+                selectedBook.name === currentBookName &&
+                chapter === currentChapter;
+              return (
+                <TouchableOpacity
+                  key={chapter}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${selectedBook.name} chapter ${chapter}`}
+                  accessibilityState={{ selected }}
+                  onLayout={
+                    selected
+                      ? ({ nativeEvent: { layout } }) => {
+                          chapterList.current?.scrollTo({
+                            y: Math.max(0, layout.y - 56),
+                            animated: false,
+                          });
+                        }
+                      : undefined
+                  }
+                  onPress={() => onSelect(selectedBook.name, chapter)}
+                  style={[
+                    styles.chapter,
+                    {
+                      width: chapterWidth,
+                      backgroundColor: selected ? colors.tint : colors.surface,
+                      borderColor: selected ? colors.tint : colors.border,
+                    },
+                  ]}
+                >
+                  <ThemedText
                     style={[
-                      styles.book,
-                      book.name === selectedBook?.name && {
-                        backgroundColor: colors.accentSoft,
-                      },
+                      styles.chapterNumber,
+                      { color: selected ? colors.onAccent : colors.text },
                     ]}
                   >
-                    <ThemedText style={styles.bookName}>{book.name}</ThemedText>
-                    <IconSymbol
-                      name="chevron.right"
-                      size={18}
-                      color={colors.tint}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </>
-          ) : (
-            <>
-              <ThemedText
-                style={[styles.hint, { color: colors.secondaryText }]}
-              >
-                Choose a chapter
-              </ThemedText>
-              <ScrollView
-                key={selectedBook?.name}
-                ref={chapterList}
-                contentContainerStyle={styles.chapters}
-              >
-                {chapters.map((chapter) => {
-                  const selected =
-                    selectedBook.name === currentBookName &&
-                    chapter === currentChapter;
-                  return (
-                    <TouchableOpacity
-                      key={chapter}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${selectedBook.name} chapter ${chapter}`}
-                      accessibilityState={{ selected }}
-                      onLayout={
-                        selected
-                          ? ({ nativeEvent: { layout } }) => {
-                              chapterList.current?.scrollTo({
-                                y: Math.max(0, layout.y - 56),
-                                animated: false,
-                              });
-                            }
-                          : undefined
-                      }
-                      onPress={() => onSelect(selectedBook.name, chapter)}
-                      style={[
-                        styles.chapter,
-                        {
-                          width: chapterWidth,
-                          backgroundColor: selected
-                            ? colors.tint
-                            : colors.surface,
-                          borderColor: selected ? colors.tint : colors.border,
-                        },
-                      ]}
-                    >
-                      <ThemedText
-                        style={[
-                          styles.chapterNumber,
-                          { color: selected ? colors.onAccent : colors.text },
-                        ]}
-                      >
-                        {chapter}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </>
-          )}
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+                    {chapter}
+                  </ThemedText>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </>
+      )}
+    </ReaderSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "flex-end", alignItems: "center" },
-  backdrop: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  sheet: {
-    width: "100%",
-    maxWidth: 560,
-    maxHeight: "88%",
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    overflow: "hidden",
-  },
-  header: { flexDirection: "row", alignItems: "center", padding: 20, gap: 12 },
-  title: { flex: 1, fontSize: 22, lineHeight: 30, fontWeight: "600" },
-  close: {
-    minWidth: 44,
-    minHeight: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   bookChoice: {
     flexDirection: "row",
     alignItems: "center",

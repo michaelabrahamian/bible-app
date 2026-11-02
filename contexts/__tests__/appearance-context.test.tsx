@@ -38,6 +38,7 @@ test("restores appearance before persisting defaults", async () => {
   await waitFor(() => expect(result.current.isReady).toBe(true));
   expect(result.current.themeId).toBe("ocean");
   expect(result.current.appearance).toBe("dark");
+  expect(result.current.readingTextSize).toBe(100);
 });
 
 test("persists theme and appearance across remounts and applies the selected palette", async () => {
@@ -55,11 +56,16 @@ test("persists theme and appearance across remounts and applies the selected pal
   await act(async () => {
     first.result.current.appearance.setThemeId("plum");
     first.result.current.appearance.setAppearance("dark");
+    first.result.current.appearance.setReadingTextSize(140);
   });
   await waitFor(() =>
     expect(AsyncStorage.setItem).toHaveBeenLastCalledWith(
       APPEARANCE_STORAGE_KEY,
-      JSON.stringify({ themeId: "plum", appearance: "dark" }),
+      JSON.stringify({
+        themeId: "plum",
+        appearance: "dark",
+        readingTextSize: 140,
+      }),
     ),
   );
   await first.unmount();
@@ -70,6 +76,7 @@ test("persists theme and appearance across remounts and applies the selected pal
     expect(second.result.current.appearance.isReady).toBe(true),
   );
   expect(second.result.current.scheme).toBe("dark");
+  expect(second.result.current.appearance.readingTextSize).toBe(140);
   expect(second.result.current.colors.background).toBe(
     ThemePalettes.plum.colors.dark.background,
   );
@@ -79,6 +86,44 @@ test("persists theme and appearance across remounts and applies the selected pal
   expect(second.result.current.colors.background).toBe(
     ThemePalettes.plum.colors.light.background,
   );
+});
+
+test("invalid saved text sizes fall back without losing valid appearance preferences", async () => {
+  for (const readingTextSize of [0, 79, 81, 181, 110.5, "140", null]) {
+    await AsyncStorage.setItem(
+      APPEARANCE_STORAGE_KEY,
+      JSON.stringify({
+        themeId: "cream",
+        appearance: "light",
+        readingTextSize,
+      }),
+    );
+    const { result, unmount } = await renderHook(useAppearance, {
+      wrapper: AppearanceProvider,
+    });
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+    expect(result.current.readingTextSize).toBe(100);
+    expect(result.current.themeId).toBe("cream");
+    expect(result.current.appearance).toBe("light");
+    await unmount();
+  }
+});
+
+test("queued text-size adjustments accumulate and invalid values are ignored", async () => {
+  const { result } = await renderHook(useAppearance, {
+    wrapper: AppearanceProvider,
+  });
+  await waitFor(() => expect(result.current.isReady).toBe(true));
+  await act(async () => {
+    result.current.setReadingTextSize((previous) => previous + 10);
+    result.current.setReadingTextSize((previous) => previous + 10);
+  });
+  expect(result.current.readingTextSize).toBe(120);
+  await act(async () => {
+    result.current.setReadingTextSize(999);
+    result.current.setReadingTextSize(115);
+  });
+  expect(result.current.readingTextSize).toBe(120);
 });
 
 test("recovers from corrupt or unsupported appearance settings", async () => {

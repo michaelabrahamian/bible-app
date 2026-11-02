@@ -1,4 +1,9 @@
 import { ThemedText } from "@/components/themed-text";
+import {
+  ReaderOptionsMenu,
+  type ReaderLayout,
+} from "@/components/reader-options-menu";
+import { useAppearance } from "@/contexts/appearance-context";
 import { PassagePicker } from "@/components/passage-picker";
 import { TranslationSelect } from "@/components/translation-select";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -14,8 +19,6 @@ import {
 import { useState } from "react";
 import { router, Stack } from "expo-router";
 import {
-  Modal,
-  Pressable,
   StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
@@ -51,7 +54,7 @@ export default function ReaderScreen() {
     singlePane,
     setSinglePane,
   } = useBible();
-  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
+  const [readingMenuOpen, setReadingMenuOpen] = useState(false);
   const [passagePickerOpen, setPassagePickerOpen] = useState(false);
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -69,7 +72,7 @@ export default function ReaderScreen() {
   const nextPassage = getAdjacentPassage(books, bookName, currentChapter, 1);
   const chapterSwipe = usePanGesture({
     testID: "chapter-swipe",
-    enabled: !layoutMenuOpen && !passagePickerOpen,
+    enabled: !readingMenuOpen && !passagePickerOpen,
     activeOffsetX: [-24, 24],
     failOffsetY: [-14, 14],
     maxPointers: 1,
@@ -89,12 +92,6 @@ export default function ReaderScreen() {
   const comparing = showDualView && Boolean(secondaryVersion);
   const sideBySide = comparing && comparisonLayout === "side-by-side";
   const narrow = sideBySide && width < 700;
-  const layoutOptions = [
-    { id: "primary", name: "Primary only", icon: "text.alignleft" },
-    { id: "secondary", name: "Secondary only", icon: "text.alignleft" },
-    { id: "side-by-side", name: "Side by side", icon: "rectangle.split.2x1" },
-    { id: "stacked", name: "Stacked", icon: "rectangle.split.1x2" },
-  ] as const;
   const secondaryOnly =
     !comparing && singlePane === "secondary" && Boolean(secondaryVersion);
   const selectedLayout = comparing
@@ -102,7 +99,7 @@ export default function ReaderScreen() {
     : secondaryOnly
       ? "secondary"
       : "primary";
-  const selectLayout = (layout: (typeof layoutOptions)[number]["id"]) => {
+  const selectLayout = (layout: ReaderLayout) => {
     if (layout === "primary" || layout === "secondary") {
       if (layout === "secondary" && !secondaryVersion) {
         const other = getVersions().find(({ id }) => id !== primaryVersion);
@@ -118,7 +115,6 @@ export default function ReaderScreen() {
       setComparisonLayout(layout);
       if (!showDualView) toggleDualView();
     }
-    setLayoutMenuOpen(false);
   };
 
   const unavailableMessage = (versionId: string) =>
@@ -129,7 +125,7 @@ export default function ReaderScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Back to library"
@@ -149,40 +145,40 @@ export default function ReaderScreen() {
           accessibilityHint="Choose a book and chapter"
           aria-expanded={passagePickerOpen}
           onPress={() => setPassagePickerOpen(true)}
-          style={[
-            styles.heading,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
+          style={styles.heading}
         >
-          <ThemedText style={[styles.eyebrow, { color: colors.secondaryText }]}>
-            CHAPTER {currentChapter}
-          </ThemedText>
           <View style={styles.passageTitle}>
             <ThemedText numberOfLines={1} style={styles.bookTitle}>
-              {bookName}
+              {bookName} {currentChapter}
             </ThemedText>
-            <IconSymbol name="chevron.down" size={17} color={colors.tint} />
+            <IconSymbol name="chevron.down" size={14} color={colors.tint} />
           </View>
         </TouchableOpacity>
         <TouchableOpacity
           accessibilityRole="button"
-          accessibilityLabel={`Reading layout: ${layoutOptions.find(({ id }) => id === selectedLayout)?.name}`}
-          aria-expanded={layoutMenuOpen}
-          accessibilityHint="Choose primary only, secondary only, side by side, or stacked"
+          accessibilityLabel="Reading options"
+          aria-expanded={readingMenuOpen}
+          accessibilityHint="Change layout, text size, colour theme and appearance"
           style={[
             styles.iconButton,
+            styles.readingOptionsButton,
             {
               backgroundColor: comparing ? colors.accentSoft : colors.surface,
               borderColor: comparing ? colors.accentSoft : colors.border,
             },
           ]}
-          onPress={() => setLayoutMenuOpen(true)}
+          onPress={() => setReadingMenuOpen(true)}
         >
           <IconSymbol
-            name={layoutOptions.find(({ id }) => id === selectedLayout)!.icon}
-            size={21}
+            name="slider.horizontal.3"
+            size={18}
             color={colors.tint}
           />
+          <ThemedText
+            style={[styles.readingOptionsLabel, { color: colors.tint }]}
+          >
+            View
+          </ThemedText>
         </TouchableOpacity>
       </View>
       {passagePickerOpen && (
@@ -197,77 +193,13 @@ export default function ReaderScreen() {
           }}
         />
       )}
-      <Modal
-        visible={layoutMenuOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setLayoutMenuOpen(false)}
-      >
-        <View style={styles.menuOverlay}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss reading layout"
-            onPress={() => setLayoutMenuOpen(false)}
-            style={styles.menuBackdrop}
-          />
-          <View
-            accessibilityViewIsModal
-            style={[
-              styles.layoutMenu,
-              {
-                marginTop: insets.top + 66,
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <ThemedText
-              accessibilityRole="header"
-              style={[styles.menuTitle, { color: colors.secondaryText }]}
-            >
-              Reading layout
-            </ThemedText>
-            <View
-              accessibilityRole="radiogroup"
-              accessibilityLabel="Reading layout"
-            >
-              {layoutOptions.map((option) => {
-                const selected = selectedLayout === option.id;
-                return (
-                  <TouchableOpacity
-                    key={option.id}
-                    accessibilityRole="radio"
-                    aria-checked={selected}
-                    accessibilityState={{ checked: selected }}
-                    accessibilityLabel={option.name}
-                    onPress={() => selectLayout(option.id)}
-                    style={[
-                      styles.menuOption,
-                      selected && { backgroundColor: colors.accentSoft },
-                    ]}
-                  >
-                    <IconSymbol
-                      name={option.icon}
-                      size={21}
-                      color={colors.tint}
-                    />
-                    <ThemedText style={styles.menuOptionText}>
-                      {option.name}
-                    </ThemedText>
-                    {selected && (
-                      <IconSymbol
-                        name="checkmark"
-                        size={18}
-                        color={colors.tint}
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {readingMenuOpen && (
+        <ReaderOptionsMenu
+          selectedLayout={selectedLayout}
+          onSelectLayout={selectLayout}
+          onClose={() => setReadingMenuOpen(false)}
+        />
+      )}
 
       <GestureDetector gesture={chapterSwipe} touchAction="pan-y">
         <View
@@ -276,7 +208,6 @@ export default function ReaderScreen() {
             {
               flexDirection: sideBySide ? "row" : "column",
               gap: narrow ? 8 : 12,
-              paddingHorizontal: narrow ? 10 : 16,
             },
           ]}
         >
@@ -367,17 +298,17 @@ export default function ReaderScreen() {
           style={[
             styles.navButton,
             {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
               opacity: previousPassage === undefined ? 0.4 : 1,
             },
           ]}
         >
-          <IconSymbol name="chevron.left" size={17} color={colors.text} />
-          <ThemedText style={styles.navText}>Previous</ThemedText>
+          <IconSymbol name="chevron.left" size={19} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.progress}>
-          <ThemedText style={styles.progressNumbers}>
+          <ThemedText
+            accessibilityLabel={`${chapterIndex + 1} of ${chapters.length} available chapters`}
+            style={styles.progressNumbers}
+          >
             {chapterIndex + 1}
             <ThemedText
               style={[styles.progressTotal, { color: colors.secondaryText }]}
@@ -385,11 +316,6 @@ export default function ReaderScreen() {
               {" "}
               / {chapters.length}
             </ThemedText>
-          </ThemedText>
-          <ThemedText
-            style={[styles.progressLabel, { color: colors.secondaryText }]}
-          >
-            available chapters
           </ThemedText>
         </View>
         <TouchableOpacity
@@ -401,16 +327,11 @@ export default function ReaderScreen() {
           style={[
             styles.navButton,
             {
-              backgroundColor: colors.tint,
-              borderColor: colors.tint,
               opacity: nextPassage === undefined ? 0.4 : 1,
             },
           ]}
         >
-          <ThemedText style={[styles.navText, { color: colors.onAccent }]}>
-            Next
-          </ThemedText>
-          <IconSymbol name="chevron.right" size={17} color={colors.onAccent} />
+          <IconSymbol name="chevron.right" size={19} color={colors.tint} />
         </TouchableOpacity>
       </View>
     </View>
@@ -517,18 +438,28 @@ function AlignedChapters({
 
 function VerseContent({ verse, narrow }: { verse: Verse; narrow: boolean }) {
   const colors = useAppTheme();
+  const { readingTextSize } = useAppearance();
+  const scale = readingTextSize / 100;
+  const fontSize = (narrow ? 16 : 19) * scale;
+  const lineHeight = (narrow ? 27 : 32) * scale;
   return (
     <View style={[styles.verseRow, narrow && styles.narrowVerseRow]}>
-      <ThemedText style={[styles.verseNumber, { color: colors.secondaryText }]}>
+      <ThemedText
+        style={[
+          styles.verseNumber,
+          { color: colors.secondaryText, fontSize: 10 * scale, lineHeight },
+        ]}
+      >
         {verse.verse}
       </ThemedText>
       <ThemedText
         style={[
           styles.verseText,
-          narrow && styles.narrowVerseText,
+          { fontSize, lineHeight },
           !verse.text.trim() && {
             fontFamily: undefined,
-            fontSize: 12,
+            fontSize: 12 * scale,
+            lineHeight: 20 * scale,
             color: colors.secondaryText,
           },
         ]}
@@ -606,41 +537,12 @@ function ChapterView({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  menuOverlay: { flex: 1, alignItems: "flex-end" },
-  menuBackdrop: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: "rgba(0,0,0,0.2)",
-  },
-  layoutMenu: {
-    width: 250,
-    maxWidth: "90%",
-    marginRight: 20,
-    padding: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    elevation: 8,
-    boxShadow: "0px 6px 24px rgba(0,0,0,0.15)",
-  },
-  menuTitle: { fontSize: 12, lineHeight: 20, padding: 10 },
-  menuOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    minHeight: 52,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  menuOptionText: { flex: 1, fontSize: 14, lineHeight: 22 },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 8,
     width: "100%",
     maxWidth: 1060,
     alignSelf: "center",
@@ -653,16 +555,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
+  readingOptionsButton: {
+    width: "auto",
+    minWidth: 66,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 8,
+  },
+  readingOptionsLabel: { fontSize: 11, lineHeight: 16, fontWeight: "600" },
   heading: {
     flex: 1,
     minWidth: 0,
     alignItems: "center",
-    gap: 2,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    minHeight: 58,
-    borderWidth: 1,
-    borderRadius: 16,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    minHeight: 44,
   },
   passageTitle: {
     flexDirection: "row",
@@ -671,17 +578,12 @@ const styles = StyleSheet.create({
     gap: 6,
     maxWidth: "100%",
   },
-  eyebrow: {
-    fontSize: 9,
-    lineHeight: 15,
-    letterSpacing: 1.7,
-    fontWeight: "600",
-  },
   bookTitle: {
     flexShrink: 1,
     fontFamily: Fonts.serif,
-    fontSize: 25,
-    lineHeight: 32,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: "600",
   },
   readingArea: {
     flex: 1,
@@ -710,7 +612,6 @@ const styles = StyleSheet.create({
   versesContent: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 28 },
   narrowContent: { paddingHorizontal: 10, paddingTop: 16 },
   narrowVerseRow: { gap: 4, marginBottom: 16 },
-  narrowVerseText: { fontSize: 16, lineHeight: 27 },
   verseRow: { flexDirection: "row", gap: 8, marginBottom: 18 },
   verseNumber: {
     fontSize: 10,
@@ -737,32 +638,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     width: "100%",
     maxWidth: 1060,
     alignSelf: "center",
   },
   navButton: {
-    borderRadius: 15,
-    borderWidth: 1,
-    minHeight: 46,
-    minWidth: 89,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    borderRadius: 22,
+    minHeight: 44,
+    minWidth: 44,
+    padding: 8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
   },
-  navText: { fontSize: 12, lineHeight: 20, fontWeight: "600" },
   progress: { flex: 1, alignItems: "center", gap: 1 },
   progressNumbers: {
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },
-  progressTotal: { fontSize: 13, lineHeight: 21, fontWeight: "400" },
-  progressLabel: { fontSize: 9, lineHeight: 15, textAlign: "center" },
+  progressTotal: { fontSize: 12, lineHeight: 18, fontWeight: "400" },
 });

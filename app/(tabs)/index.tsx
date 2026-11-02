@@ -2,6 +2,7 @@ import { ContentNotice } from "@/components/content-notice";
 import { ThemedText } from "@/components/themed-text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Fonts } from "@/constants/theme";
+import { getTabContentBottomInset } from "@/constants/navigation";
 import { useBible } from "@/contexts/bible-context";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { router } from "expo-router";
@@ -52,7 +53,10 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 24 },
+          {
+            paddingTop: insets.top + 24,
+            paddingBottom: getTabContentBottomInset(insets.bottom) ?? 28,
+          },
         ]}
         keyboardShouldPersistTaps="handled"
       >
