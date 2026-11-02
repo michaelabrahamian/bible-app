@@ -133,7 +133,7 @@ export default function HomeScreen() {
           style={[styles.continueCard, { backgroundColor: colors.hero }]}
           accessibilityRole="button"
           accessibilityLabel={`Continue reading ${continueReading.bookName} chapter ${continueReading.chapter}`}
-          onPress={() => router.push("/reader")}
+          onPress={() => router.navigate("/bible")}
         >
           <View style={styles.cardTop}>
             <ThemedText style={[styles.eyebrow, { color: colors.heroMuted }]}>
@@ -233,8 +233,8 @@ export default function HomeScreen() {
               ]}
               onPress={() => {
                 setHomePreview({ isFocused, opening: currentReading });
-                router.push({
-                  pathname: "/reader",
+                router.navigate({
+                  pathname: "/bible",
                   params: { book: book.name },
                 });
               }}

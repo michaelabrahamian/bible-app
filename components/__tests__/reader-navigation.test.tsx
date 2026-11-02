@@ -8,7 +8,7 @@ import {
   fireGestureHandler,
   getByGestureTestId,
 } from "react-native-gesture-handler/jest-utils";
-import ReaderScreen from "@/app/reader";
+import ReaderScreen from "@/app/(tabs)/bible";
 import SettingsScreen from "@/app/(tabs)/explore";
 import HomeScreen from "@/app/(tabs)/index";
 import { router, useLocalSearchParams } from "expo-router";
@@ -57,6 +57,7 @@ jest.mock("expo-router", () => ({
     back: jest.fn(),
     replace: jest.fn(),
     push: jest.fn(),
+    navigate: jest.fn(),
     setParams: jest.fn(),
   },
 }));
@@ -138,8 +139,8 @@ test("choosing a library book leaves the continue card and stored passage unchan
   await fireEvent.press(
     screen.getByRole("button", { name: "Read Exodus, 40 chapters" }),
   );
-  expect(router.push).toHaveBeenCalledWith({
-    pathname: "/reader",
+  expect(router.navigate).toHaveBeenCalledWith({
+    pathname: "/bible",
     params: { book: "Exodus" },
   });
   expect(
@@ -176,7 +177,7 @@ test("the reader applies a requested book only when focused, and never replays i
     ).toMatchObject({ currentBookName: "Exodus", currentChapter: 1 }),
   );
   expect(router.setParams).toHaveBeenCalledWith({ book: undefined });
-  await fireEvent.press(screen.getByRole("button", { name: "Next chapter" }));
+  await swipe(-120);
   jest.mocked(useIsFocused).mockReturnValue(false);
   await screen.rerender(
     <TestProviders>
@@ -192,6 +193,46 @@ test("the reader applies a requested book only when focused, and never replays i
   expect(
     screen.getByRole("button", { name: "Choose passage: Exodus 2" }),
   ).toBeTruthy();
+});
+
+test("the persistent Bible tab can reopen the same library book at its first chapter", async () => {
+  jest.mocked(useLocalSearchParams).mockReturnValue({ book: "Exodus" });
+  const screen = await reader();
+  await swipe(-120);
+  expect(
+    screen.getByRole("button", { name: "Choose passage: Exodus 2" }),
+  ).toBeTruthy();
+  jest.mocked(useLocalSearchParams).mockReturnValue({});
+  await screen.rerender(
+    <TestProviders>
+      <ReadyReader />
+    </TestProviders>,
+  );
+  jest.mocked(useLocalSearchParams).mockReturnValue({ book: "Exodus" });
+  await screen.rerender(
+    <TestProviders>
+      <ReadyReader />
+    </TestProviders>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Choose passage: Exodus 1" }),
+  ).toBeTruthy();
+});
+
+test("Continue reading selects the Bible tab without changing the saved passage", async () => {
+  const screen = await reader({ currentBookName: "John", currentChapter: 3 });
+  await screen.rerender(
+    <TestProviders>
+      <HomeScreen />
+    </TestProviders>,
+  );
+  await fireEvent.press(
+    screen.getByRole("button", { name: "Continue reading John chapter 3" }),
+  );
+  expect(router.navigate).toHaveBeenCalledWith("/bible");
+  expect(
+    JSON.parse((await AsyncStorage.getItem(READER_STORAGE_KEY))!),
+  ).toMatchObject({ currentBookName: "John", currentChapter: 3 });
 });
 
 function UpdateReadingPlace() {
@@ -532,9 +573,12 @@ test("short, vertical, diagonal and cancelled drags do not change chapter", asyn
   ).toBeTruthy();
 });
 
-test("buttons and swipes cross book boundaries without wrapping at Bible edges", async () => {
+test("chapter swipes cross book boundaries and stop at Bible edges without reader back/footer controls", async () => {
   const screen = await reader({ currentChapter: 50 });
-  await fireEvent.press(screen.getByRole("button", { name: "Next chapter" }));
+  expect(screen.queryByRole("button", { name: "Back to library" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Next chapter" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Previous chapter" })).toBeNull();
+  await swipe(-120);
   expect(
     screen.getByRole("button", { name: "Choose passage: Exodus 1" }),
   ).toBeTruthy();
@@ -544,10 +588,6 @@ test("buttons and swipes cross book boundaries without wrapping at Bible edges",
   ).toBeTruthy();
   await screen.unmount();
   const beginning = await reader();
-  expect(
-    beginning.getByRole("button", { name: "Previous chapter" }).props
-      .accessibilityState.disabled,
-  ).toBe(true);
   await swipe(120);
   expect(
     beginning.getByRole("button", { name: "Choose passage: Genesis 1" }),
@@ -557,10 +597,6 @@ test("buttons and swipes cross book boundaries without wrapping at Bible edges",
     currentBookName: "Revelation of John",
     currentChapter: 22,
   });
-  expect(
-    end.getByRole("button", { name: "Next chapter" }).props.accessibilityState
-      .disabled,
-  ).toBe(true);
   await swipe(-120);
   expect(
     end.getByRole("button", { name: "Choose passage: Revelation of John 22" }),

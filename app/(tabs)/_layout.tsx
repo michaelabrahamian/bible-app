@@ -21,6 +21,16 @@ export default function TabLayout() {
           name="index"
           contentStyle={{ backgroundColor: colors.background }}
         >
+          <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: "house", selected: "house.fill" }}
+          />
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger
+          name="bible"
+          disableAutomaticContentInsets
+          contentStyle={{ backgroundColor: colors.background }}
+        >
           <NativeTabs.Trigger.Label>Bible</NativeTabs.Trigger.Label>
           <NativeTabs.Trigger.Icon
             sf={{ default: "book", selected: "book.fill" }}
@@ -69,6 +79,15 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={23} name="house.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bible"
         options={{
           title: "Bible",
           tabBarIcon: ({ color }) => (

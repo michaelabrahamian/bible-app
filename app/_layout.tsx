@@ -63,12 +63,18 @@ function ReaderNavigation() {
       }}
     >
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
         <Stack.Screen
           name="modal"
           options={{ presentation: "modal", title: "Modal" }}
         />
-        <Stack.Screen name="reader" options={{ title: "Bible Reader" }} />
+        <Stack.Screen
+          name="reader"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
         <Stack.Screen
           name="licences"
           options={{ title: "Text sources & licences" }}

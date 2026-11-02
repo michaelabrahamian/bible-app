@@ -39,7 +39,7 @@ KJV and NEB source files match pinned public GitHub downloads byte-for-byte. WEB
 
 - `app/(tabs)/index.tsx`: reading card, book list, and book-name search.
 - `app/(tabs)/explore.tsx`: translation and comparison preferences.
-- `app/reader.tsx`: chapter reader.
+- `app/(tabs)/bible.tsx`: chapter reader in the Bible tab (`app/reader.tsx` redirects older links).
 - `contexts/bible-context.tsx`: reading state, validated restoration, and device storage.
 - `services/bible-service.ts`: access to the two bundled translations.
 - `scripts/audit-bible-data.js`: structural content audit.

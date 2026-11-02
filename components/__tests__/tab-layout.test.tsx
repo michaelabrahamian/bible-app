@@ -58,14 +58,16 @@ jest.mock("expo-router/native-tabs", () => {
   };
 });
 
-test("supported iPhones use the system tab navigator with both existing routes", async () => {
+test("supported iPhones have native Home, Bible and Settings tabs", async () => {
   jest.mocked(supportsLiquidGlass).mockReturnValue(true);
   const screen = await render(<TabLayout />);
   expect(screen.getByTestId("native-tabs")).toBeTruthy();
   expect(screen.getByTestId("native-route-index")).toBeTruthy();
+  expect(screen.getByTestId("native-route-bible")).toBeTruthy();
   expect(screen.getByTestId("native-route-explore")).toBeTruthy();
   expect(screen.queryByTestId("standard-tabs")).toBeNull();
   expect(screen.getByText("Bible")).toBeTruthy();
+  expect(screen.getByText("Home")).toBeTruthy();
   expect(screen.getByText("Settings")).toBeTruthy();
 });
 
@@ -75,5 +77,6 @@ test("unsupported devices keep the previous standard tab navigator", async () =>
   expect(screen.getByTestId("standard-tabs")).toBeTruthy();
   expect(screen.queryByTestId("native-tabs")).toBeNull();
   expect(screen.getByText("Bible")).toBeTruthy();
+  expect(screen.getByText("Home")).toBeTruthy();
   expect(screen.getByText("Settings")).toBeTruthy();
 });
