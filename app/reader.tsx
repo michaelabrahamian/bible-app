@@ -1,9 +1,11 @@
 import { ThemedText } from "@/components/themed-text";
+import { PassagePicker } from "@/components/passage-picker";
 import { TranslationSelect } from "@/components/translation-select";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Fonts } from "@/constants/theme";
 import { useBible } from "@/contexts/bible-context";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { getAdjacentPassage } from "@/utils/reader-navigation";
 import {
   getChapterAvailability,
   type Chapter,
@@ -14,12 +16,17 @@ import { router, Stack } from "expo-router";
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
+import {
+  GestureDetector,
+  ScrollView,
+  usePanGesture,
+  type PanGesture,
+} from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ReaderScreen() {
@@ -29,11 +36,13 @@ export default function ReaderScreen() {
     currentChapter,
     showDualView,
     toggleDualView,
-    setCurrentChapter,
+    setPassage,
+    moveChapter,
     getPrimaryChapter,
     getSecondaryChapter,
     getCurrentBookName,
     getChapterNumbers,
+    getBooks,
     setPrimaryVersion,
     setSecondaryVersion,
     comparisonLayout,
@@ -43,14 +52,40 @@ export default function ReaderScreen() {
     setSinglePane,
   } = useBible();
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
+  const [passagePickerOpen, setPassagePickerOpen] = useState(false);
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const bookName = getCurrentBookName();
+  const books = getBooks();
   const chapters = getChapterNumbers();
   const chapterIndex = chapters.indexOf(currentChapter);
-  const previousChapter = chapters[chapterIndex - 1];
-  const nextChapter = chapters[chapterIndex + 1];
+  const previousPassage = getAdjacentPassage(
+    books,
+    bookName,
+    currentChapter,
+    -1,
+  );
+  const nextPassage = getAdjacentPassage(books, bookName, currentChapter, 1);
+  const chapterSwipe = usePanGesture({
+    testID: "chapter-swipe",
+    enabled: !layoutMenuOpen && !passagePickerOpen,
+    activeOffsetX: [-24, 24],
+    failOffsetY: [-14, 14],
+    maxPointers: 1,
+    runOnJS: true,
+    onDeactivate: ({ canceled, translationX, translationY }) => {
+      // Ignore short drags, canceled gestures and diagonal scrolling. Native
+      // failOffsetY also gives vertical scrolling priority before activation.
+      if (
+        canceled ||
+        Math.abs(translationX) < Math.min(72, width * 0.18) ||
+        Math.abs(translationX) < Math.abs(translationY) * 1.5
+      )
+        return;
+      moveChapter(translationX < 0 ? 1 : -1);
+    },
+  });
   const comparing = showDualView && Boolean(secondaryVersion);
   const sideBySide = comparing && comparisonLayout === "side-by-side";
   const narrow = sideBySide && width < 700;
@@ -108,24 +143,32 @@ export default function ReaderScreen() {
         >
           <IconSymbol name="arrow.left" size={21} color={colors.text} />
         </TouchableOpacity>
-        <View style={styles.heading}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={`Choose passage: ${bookName} ${currentChapter}`}
+          accessibilityHint="Choose a book and chapter"
+          aria-expanded={passagePickerOpen}
+          onPress={() => setPassagePickerOpen(true)}
+          style={[
+            styles.heading,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <ThemedText style={[styles.eyebrow, { color: colors.secondaryText }]}>
             CHAPTER {currentChapter}
           </ThemedText>
-          <ThemedText
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={styles.bookTitle}
-          >
-            {bookName}
-          </ThemedText>
-        </View>
+          <View style={styles.passageTitle}>
+            <ThemedText numberOfLines={1} style={styles.bookTitle}>
+              {bookName}
+            </ThemedText>
+            <IconSymbol name="chevron.down" size={17} color={colors.tint} />
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel={`Reading layout: ${layoutOptions.find(({ id }) => id === selectedLayout)?.name}`}
           aria-expanded={layoutMenuOpen}
           accessibilityHint="Choose primary only, secondary only, side by side, or stacked"
-
           style={[
             styles.iconButton,
             {
@@ -142,6 +185,18 @@ export default function ReaderScreen() {
           />
         </TouchableOpacity>
       </View>
+      {passagePickerOpen && (
+        <PassagePicker
+          books={books}
+          currentBookName={bookName}
+          currentChapter={currentChapter}
+          onClose={() => setPassagePickerOpen(false)}
+          onSelect={(name, chapter) => {
+            setPassage(name, chapter);
+            setPassagePickerOpen(false);
+          }}
+        />
+      )}
       <Modal
         visible={layoutMenuOpen}
         transparent
@@ -214,82 +269,88 @@ export default function ReaderScreen() {
         </View>
       </Modal>
 
-      <View
-        style={[
-          styles.readingArea,
-          {
-            flexDirection: sideBySide ? "row" : "column",
-            gap: narrow ? 8 : 12,
-            paddingHorizontal: narrow ? 10 : 16,
-          },
-        ]}
-      >
-        {sideBySide && secondaryVersion ? (
-          <AlignedChapters
-            key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
-            primary={{
-              chapter: getPrimaryChapter(),
-              versionId: primaryVersion,
-              label: "Primary translation",
-              onVersionChange: setPrimaryVersion,
-              swapVersion: secondaryVersion,
-              narrow,
-              unavailableMessage: unavailableMessage(primaryVersion),
-            }}
-            secondary={{
-              chapter: getSecondaryChapter(),
-              versionId: secondaryVersion,
-              label: "Comparison translation",
-              onVersionChange: setSecondaryVersion,
-              excludedVersion: primaryVersion,
-              narrow,
-              unavailableMessage: unavailableMessage(secondaryVersion),
-            }}
-          />
-        ) : (
-          <>
-            <View style={styles.pane}>
-              <ChapterView
-                key={`${secondaryOnly ? secondaryVersion : primaryVersion}:${bookName}:${currentChapter}:${comparing ? comparisonLayout : "single"}`}
-                chapter={
-                  secondaryOnly ? getSecondaryChapter() : getPrimaryChapter()
-                }
-                versionId={secondaryOnly ? secondaryVersion! : primaryVersion}
-                swapVersion={
-                  secondaryOnly ? undefined : (secondaryVersion ?? undefined)
-                }
-                excludedVersion={secondaryOnly ? primaryVersion : undefined}
-                label={
-                  secondaryOnly
-                    ? "Comparison translation"
-                    : "Primary translation"
-                }
-                onVersionChange={
-                  secondaryOnly ? setSecondaryVersion : setPrimaryVersion
-                }
-                narrow={false}
-                unavailableMessage={unavailableMessage(
-                  secondaryOnly ? secondaryVersion! : primaryVersion,
-                )}
-              />
-            </View>
-            {comparing && secondaryVersion && (
+      <GestureDetector gesture={chapterSwipe} touchAction="pan-y">
+        <View
+          style={[
+            styles.readingArea,
+            {
+              flexDirection: sideBySide ? "row" : "column",
+              gap: narrow ? 8 : 12,
+              paddingHorizontal: narrow ? 10 : 16,
+            },
+          ]}
+        >
+          {sideBySide && secondaryVersion ? (
+            <AlignedChapters
+              key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
+              primary={{
+                chapter: getPrimaryChapter(),
+                versionId: primaryVersion,
+                label: "Primary translation",
+                onVersionChange: setPrimaryVersion,
+                swapVersion: secondaryVersion,
+                narrow,
+                unavailableMessage: unavailableMessage(primaryVersion),
+                swipeGesture: chapterSwipe,
+              }}
+              secondary={{
+                chapter: getSecondaryChapter(),
+                versionId: secondaryVersion,
+                label: "Comparison translation",
+                onVersionChange: setSecondaryVersion,
+                excludedVersion: primaryVersion,
+                narrow,
+                unavailableMessage: unavailableMessage(secondaryVersion),
+                swipeGesture: chapterSwipe,
+              }}
+            />
+          ) : (
+            <>
               <View style={styles.pane}>
                 <ChapterView
-                  key={`${secondaryVersion}:${bookName}:${currentChapter}:${comparisonLayout}`}
-                  chapter={getSecondaryChapter()}
-                  versionId={secondaryVersion}
-                  label="Comparison translation"
-                  excludedVersion={primaryVersion}
-                  onVersionChange={setSecondaryVersion}
+                  key={`${secondaryOnly ? secondaryVersion : primaryVersion}:${bookName}:${currentChapter}:${comparing ? comparisonLayout : "single"}`}
+                  chapter={
+                    secondaryOnly ? getSecondaryChapter() : getPrimaryChapter()
+                  }
+                  versionId={secondaryOnly ? secondaryVersion! : primaryVersion}
+                  swapVersion={
+                    secondaryOnly ? undefined : (secondaryVersion ?? undefined)
+                  }
+                  excludedVersion={secondaryOnly ? primaryVersion : undefined}
+                  label={
+                    secondaryOnly
+                      ? "Comparison translation"
+                      : "Primary translation"
+                  }
+                  onVersionChange={
+                    secondaryOnly ? setSecondaryVersion : setPrimaryVersion
+                  }
                   narrow={false}
-                  unavailableMessage={unavailableMessage(secondaryVersion)}
+                  swipeGesture={chapterSwipe}
+                  unavailableMessage={unavailableMessage(
+                    secondaryOnly ? secondaryVersion! : primaryVersion,
+                  )}
                 />
               </View>
-            )}
-          </>
-        )}
-      </View>
+              {comparing && secondaryVersion && (
+                <View style={styles.pane}>
+                  <ChapterView
+                    key={`${secondaryVersion}:${bookName}:${currentChapter}:${comparisonLayout}`}
+                    chapter={getSecondaryChapter()}
+                    versionId={secondaryVersion}
+                    label="Comparison translation"
+                    excludedVersion={primaryVersion}
+                    onVersionChange={setSecondaryVersion}
+                    narrow={false}
+                    swipeGesture={chapterSwipe}
+                    unavailableMessage={unavailableMessage(secondaryVersion)}
+                  />
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      </GestureDetector>
 
       <View
         style={[
@@ -300,17 +361,15 @@ export default function ReaderScreen() {
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Previous chapter"
-          accessibilityState={{ disabled: previousChapter === undefined }}
-          disabled={previousChapter === undefined}
-          onPress={() =>
-            previousChapter !== undefined && setCurrentChapter(previousChapter)
-          }
+          accessibilityState={{ disabled: previousPassage === undefined }}
+          disabled={previousPassage === undefined}
+          onPress={() => moveChapter(-1)}
           style={[
             styles.navButton,
             {
               backgroundColor: colors.surface,
               borderColor: colors.border,
-              opacity: previousChapter === undefined ? 0.4 : 1,
+              opacity: previousPassage === undefined ? 0.4 : 1,
             },
           ]}
         >
@@ -336,17 +395,15 @@ export default function ReaderScreen() {
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Next chapter"
-          accessibilityState={{ disabled: nextChapter === undefined }}
-          disabled={nextChapter === undefined}
-          onPress={() =>
-            nextChapter !== undefined && setCurrentChapter(nextChapter)
-          }
+          accessibilityState={{ disabled: nextPassage === undefined }}
+          disabled={nextPassage === undefined}
+          onPress={() => moveChapter(1)}
           style={[
             styles.navButton,
             {
               backgroundColor: colors.tint,
               borderColor: colors.tint,
-              opacity: nextChapter === undefined ? 0.4 : 1,
+              opacity: nextPassage === undefined ? 0.4 : 1,
             },
           ]}
         >
@@ -369,6 +426,7 @@ interface ReadingPane {
   swapVersion?: string;
   narrow: boolean;
   unavailableMessage: string;
+  swipeGesture: PanGesture;
 }
 
 function AlignedChapters({
@@ -410,6 +468,7 @@ function AlignedChapters({
         ))}
       </View>
       <ScrollView
+        simultaneousWith={primary.swipeGesture}
         style={styles.versesContainer}
         contentContainerStyle={styles.parallelContent}
         showsVerticalScrollIndicator={false}
@@ -506,6 +565,7 @@ function ChapterView({
   swapVersion,
   narrow,
   unavailableMessage,
+  swipeGesture,
 }: ReadingPane) {
   const colors = useAppTheme();
   return (
@@ -524,6 +584,7 @@ function ChapterView({
         compact
       />
       <ScrollView
+        simultaneousWith={swipeGesture}
         style={styles.versesContainer}
         contentContainerStyle={[
           styles.versesContent,
@@ -592,14 +653,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  heading: { flex: 1, alignItems: "center", gap: 2 },
+  heading: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    minHeight: 58,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  passageTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    maxWidth: "100%",
+  },
   eyebrow: {
     fontSize: 9,
     lineHeight: 15,
     letterSpacing: 1.7,
     fontWeight: "600",
   },
-  bookTitle: { fontFamily: Fonts.serif, fontSize: 25, lineHeight: 32 },
+  bookTitle: {
+    flexShrink: 1,
+    fontFamily: Fonts.serif,
+    fontSize: 25,
+    lineHeight: 32,
+  },
   readingArea: {
     flex: 1,
     gap: 12,
