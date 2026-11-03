@@ -2,11 +2,18 @@
 
 The first native widget is for iOS 17+. Small widgets show Armenian; medium and
 large widgets stack Armenian above KJV English. Long-press a widget and choose
-**Edit Widget → Background** to pick System, Forest, Ocean, Clay, Plum, White,
-Cream, Black or Grey. Each widget keeps its own choice. System preserves the
-original forest palette and follows the phone's light/dark appearance; the other
-options use a fixed background with matching readable text. The widget does not
-yet inherit the reader's selected theme or offer translation preferences.
+**Edit Widget → Background** to pick Match App, System, Forest, Ocean, Clay, Plum,
+White, Cream, Black or Grey. Each widget keeps its own choice.
+
+**Match App** is the default for new widgets. It follows the app's colour theme
+and System/Light/Dark setting, including changes made from the reader. Open the
+app once after installing the native update to share its saved preferences.
+Widgets already set to System keep that choice; select Match App to opt in.
+Until preferences are shared, Match App uses the original adaptive forest palette.
+
+**System** remains separate: it uses the original forest palette and follows the
+phone's light/dark appearance. The other options use a fixed background with
+matching readable text. Translation preferences are not yet configurable.
 
 The Home Screen's tinted or clear appearance modes can override widget colours.
 Use the standard Home Screen appearance to see the selected background colours.
@@ -40,8 +47,13 @@ calendar utility and verse links can be reused for that implementation.
 
 The local `plugins/with-daily-verse-widget.cjs` config plugin generates a
 `DailyVerseWidget` extension with bundle ID `<ios.bundleIdentifier>.widget`.
-It is idempotent and does not need App Groups, push notifications, or a JavaScript
-runtime inside the widget. Automatic signing uses the app's team when available;
+It is idempotent and configures `group.<ios.bundleIdentifier>.widgets` for the app
+and extension. The app atomically shares only palette colours and appearance
+preferences in this container; Bible text stays bundled in the extension. The
+native bridge requests a WidgetKit reload when preferences change, with refresh
+timing controlled by iOS. Both light and dark palettes are stored so System
+appearance can adapt without reopening the app. No push notifications or widget
+JavaScript runtime are needed. Automatic signing uses the app's team when available;
 configure signing for both targets in Xcode or pass `DEVELOPMENT_TEAM` when
 building locally. The extension deployment target is iOS 17.
 
@@ -54,6 +66,8 @@ the native calendar independently with:
 ```sh
 xcrun swiftc widgets/ios/DailyVerseCalendar.swift widgets/tests/main.swift -o /tmp/bible-widget-calendar-test
 /tmp/bible-widget-calendar-test
+xcrun swiftc modules/bible-widget-appearance/ios/SharedWidgetAppearance.swift widgets/tests/appearance/main.swift -o /tmp/bible-widget-appearance-test
+/tmp/bible-widget-appearance-test
 ```
 
 Hardware checks should include small/medium/large layouts, a cold app launch and
