@@ -18,6 +18,8 @@ import { Fonts } from "@/constants/theme";
 import { useBible } from "@/contexts/bible-context";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useChapterSwipeFeedback } from "@/hooks/use-chapter-swipe-feedback";
+import { useScrollToSelection } from "@/hooks/use-scroll-to-selection";
+import { resolvePassageLink, type PassageLinkParameters } from "@/utils/passage-link";
 import { supportsLiquidGlass } from "@/constants/navigation";
 import { getAdjacentPassage } from "@/utils/reader-navigation";
 import {
@@ -29,7 +31,7 @@ import {
   type Chapter,
   type Verse,
 } from "@/services/bible-service";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView as NativeTabSafeAreaView } from "react-native-screens/experimental";
 import { useIsFocused } from "expo-router/react-navigation";
@@ -57,7 +59,6 @@ export default function ReaderScreen() {
     showDualView,
     toggleDualView,
     setPassage,
-    setCurrentBook,
     moveChapter,
     getPrimaryChapter,
     getSecondaryChapter,
@@ -71,28 +72,46 @@ export default function ReaderScreen() {
     singlePane,
     setSinglePane,
   } = useBible();
-  const { book: requestedBook } = useLocalSearchParams<{
-    book?: string | string[];
-  }>();
+  const {
+    book: requestedBook,
+    chapter: requestedChapter,
+    verse: requestedVerse,
+  } = useLocalSearchParams<PassageLinkParameters>();
   const isFocused = useIsFocused();
-  const openedBook = useRef<string | undefined>(undefined);
+  const openedRequest = useRef<string | undefined>(undefined);
+  const [passageFocus, setPassageFocus] = useState<{
+    book: string;
+    chapter: number;
+    verse?: number;
+    serial: number;
+  }>({ book: "", chapter: 0, serial: 0 });
   useLayoutEffect(() => {
     if (requestedBook === undefined) {
-      openedBook.current = undefined;
+      openedRequest.current = undefined;
       return;
     }
-    if (
-      !isFocused ||
-      typeof requestedBook !== "string" ||
-      openedBook.current === requestedBook
-    )
-      return;
-    openedBook.current = requestedBook;
-    const index = getBooks().findIndex(({ name }) => name === requestedBook);
-    if (index >= 0) setCurrentBook(index);
+    const params = { book: requestedBook, chapter: requestedChapter, verse: requestedVerse };
+    const request = JSON.stringify(params);
+    if (!isFocused || openedRequest.current === request) return;
+    openedRequest.current = request;
+    const passage = resolvePassageLink(params, getBooks());
+    if (passage) {
+      setPassage(passage.book, passage.chapter);
+      // The URL is consumed below; retain its focus until native layout arrives.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPassageFocus((previous) => ({ ...passage, serial: previous.serial + 1 }));
+    }
     // Consume the request so refocusing cannot reset later chapter navigation.
-    router.setParams({ book: undefined });
-  }, [isFocused, requestedBook, getBooks, setCurrentBook]);
+    router.setParams({ book: undefined, chapter: undefined, verse: undefined });
+  }, [isFocused, requestedBook, requestedChapter, requestedVerse, getBooks, setPassage]);
+  useEffect(() => {
+    if (!passageFocus.verse) return;
+    const timer = setTimeout(() => {
+      // Keep the serial stable: removing a highlight must not remount the reader.
+      setPassageFocus((previous) => ({ ...previous, verse: undefined }));
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [passageFocus.serial, passageFocus.verse]);
   const [readingMenuOpen, setReadingMenuOpen] = useState(false);
   const [passagePickerOpen, setPassagePickerOpen] = useState(false);
   const colors = useAppTheme();
@@ -125,6 +144,9 @@ export default function ReaderScreen() {
   );
   const displaySplit = getReaderDisplaySplit(currentDisplay, outerPadding);
   const bookName = getCurrentBookName();
+  const focusedVerse = passageFocus.book === bookName && passageFocus.chapter === currentChapter
+    ? passageFocus.verse
+    : undefined;
   const books = getBooks();
   const previousPassage = getAdjacentPassage(
     books,
@@ -336,7 +358,7 @@ export default function ReaderScreen() {
             <AlignedChapters
               split={verticalSplit}
               contentWidth={width - outerPadding.left - outerPadding.right}
-              key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
+              key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}:${passageFocus.serial}`}
               primary={{
                 chapter: getPrimaryChapter(),
                 versionId: primaryVersion,
@@ -347,6 +369,7 @@ export default function ReaderScreen() {
                 unavailableMessage: unavailableMessage(primaryVersion),
                 swipeGesture: chapterSwipe,
                 swipeOffset: swipeFeedback.offset,
+                focusedVerse,
               }}
               secondary={{
                 chapter: getSecondaryChapter(),
@@ -358,12 +381,13 @@ export default function ReaderScreen() {
                 unavailableMessage: unavailableMessage(secondaryVersion),
                 swipeGesture: chapterSwipe,
                 swipeOffset: swipeFeedback.offset,
+                focusedVerse,
               }}
             />
           ) : comparing && secondaryVersion ? (
             <StackedChapters
               split={split?.axis === "horizontal" ? split : null}
-              key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
+              key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}:${passageFocus.serial}`}
               primary={{
                 chapter: getPrimaryChapter(),
                 versionId: primaryVersion,
@@ -374,6 +398,7 @@ export default function ReaderScreen() {
                 unavailableMessage: unavailableMessage(primaryVersion),
                 swipeGesture: chapterSwipe,
                 swipeOffset: swipeFeedback.offset,
+                focusedVerse,
               }}
               secondary={{
                 chapter: getSecondaryChapter(),
@@ -385,13 +410,14 @@ export default function ReaderScreen() {
                 unavailableMessage: unavailableMessage(secondaryVersion),
                 swipeGesture: chapterSwipe,
                 swipeOffset: swipeFeedback.offset,
+                focusedVerse,
               }}
             />
           ) : (
             <>
               <View style={styles.pane}>
                 <ChapterView
-                  key={`${secondaryOnly ? secondaryVersion : primaryVersion}:${bookName}:${currentChapter}:${comparing ? comparisonLayout : "single"}`}
+                  key={`${secondaryOnly ? secondaryVersion : primaryVersion}:${bookName}:${currentChapter}:${comparing ? comparisonLayout : "single"}:${passageFocus.serial}`}
                   chapter={
                     secondaryOnly ? getSecondaryChapter() : getPrimaryChapter()
                   }
@@ -411,6 +437,7 @@ export default function ReaderScreen() {
                   narrow={false}
                   swipeGesture={chapterSwipe}
                   swipeOffset={swipeFeedback.offset}
+                  focusedVerse={focusedVerse}
                   unavailableMessage={unavailableMessage(
                     secondaryOnly ? secondaryVersion! : primaryVersion,
                   )}
@@ -435,6 +462,7 @@ interface ReadingPane {
   unavailableMessage: string;
   swipeGesture: PanGesture;
   swipeOffset: Animated.Value;
+  focusedVerse?: number;
 }
 
 function StackedChapters({
@@ -484,6 +512,7 @@ function AlignedChapters({
 }) {
   const colors = useAppTheme();
   const panes = [primary, secondary];
+  const { attach, onLayout, onContentSizeChange, onSelectionLayout } = useScrollToSelection(Boolean(primary.focusedVerse));
   // Keep headers and verses explicitly constrained in both layouts, so closing
   // the fold updates every column to the newly measured reader width.
   const columnSize = (index: number) => ({
@@ -529,6 +558,10 @@ function AlignedChapters({
         ))}
       </View>
       <ScrollView
+        testID="parallel-chapter-scroll"
+        ref={attach}
+        onLayout={onLayout}
+        onContentSizeChange={onContentSizeChange}
         simultaneousWith={primary.swipeGesture}
         style={styles.versesContainer}
         contentContainerStyle={styles.parallelContent}
@@ -538,6 +571,7 @@ function AlignedChapters({
           <View
             key={number}
             testID={`parallel-verse-${number}`}
+            onLayout={number === primary.focusedVerse ? onSelectionLayout : undefined}
             style={[styles.parallelRow, { gap: split?.gap ?? 0 }]}
           >
             {panes.map((pane, index) => (
@@ -558,6 +592,7 @@ function AlignedChapters({
                     }
                     narrow={pane.narrow}
                     swipeOffset={pane.swipeOffset}
+                    highlighted={number === pane.focusedVerse}
                   />
                 ) : rowIndex === 0 ? (
                   <UnavailableText message={pane.unavailableMessage} />
@@ -584,10 +619,12 @@ function VerseContent({
   verse,
   narrow,
   swipeOffset,
+  highlighted = false,
 }: {
   verse: Verse;
   narrow: boolean;
   swipeOffset: Animated.Value;
+  highlighted?: boolean;
 }) {
   const colors = useAppTheme();
   const { readingTextSize } = useAppearance();
@@ -599,6 +636,7 @@ function VerseContent({
       style={[
         styles.verseRow,
         narrow && styles.narrowVerseRow,
+        highlighted && { backgroundColor: colors.accentSoft, borderRadius: 6 },
         { transform: [{ translateX: swipeOffset }] },
       ]}
     >
@@ -657,10 +695,12 @@ function ChapterView({
   swipeGesture,
   swipeOffset,
   linkedScroll,
+  focusedVerse,
 }: ReadingPane & {
   linkedScroll?: { controller: LinkedVerseScroll; pane: 0 | 1 };
 }) {
   const colors = useAppTheme();
+  const { attach, onLayout, onContentSizeChange, onSelectionLayout } = useScrollToSelection(Boolean(focusedVerse));
   const takeControl = () =>
     linkedScroll?.controller.activate(linkedScroll.pane);
   return (
@@ -680,12 +720,13 @@ function ChapterView({
       />
       <ScrollView
         testID={`chapter-scroll-${versionId}`}
-        ref={(node) =>
+        ref={(node) => {
+          attach(node);
           linkedScroll?.controller.attach(
             linkedScroll.pane,
             node ? (y) => node.scrollTo({ y, animated: false }) : undefined,
-          )
-        }
+          );
+        }}
         onScrollBeginDrag={takeControl}
         onTouchStart={takeControl}
         // React Native Web forwards these DOM events; native uses drag/touch.
@@ -696,15 +737,17 @@ function ChapterView({
               onKeyDown: takeControl,
             }
           : {})}
-        onLayout={({ nativeEvent }) =>
+        onLayout={(event) => {
+          onLayout(event);
           linkedScroll?.controller.measureViewport(
             linkedScroll.pane,
-            nativeEvent.layout.height,
-          )
-        }
-        onContentSizeChange={(_, height) =>
-          linkedScroll?.controller.measureContent(linkedScroll.pane, height)
-        }
+            event.nativeEvent.layout.height,
+          );
+        }}
+        onContentSizeChange={(width, height) => {
+          onContentSizeChange(width, height);
+          linkedScroll?.controller.measureContent(linkedScroll.pane, height);
+        }}
         onScroll={({ nativeEvent }) =>
           linkedScroll?.controller.scroll(
             linkedScroll.pane,
@@ -726,18 +769,20 @@ function ChapterView({
               key={verse.verse}
               testID={`chapter-${versionId}-verse-${verse.verse}`}
               style={styles.clippedVerse}
-              onLayout={({ nativeEvent }) =>
+              onLayout={(event) => {
+                if (verse.verse === focusedVerse) onSelectionLayout(event);
                 linkedScroll?.controller.measureVerse(
                   linkedScroll.pane,
                   verse.verse,
-                  nativeEvent.layout.y,
-                )
-              }
+                  event.nativeEvent.layout.y,
+                );
+              }}
             >
               <VerseContent
                 verse={verse}
                 narrow={narrow}
                 swipeOffset={swipeOffset}
+                highlighted={verse.verse === focusedVerse}
               />
             </View>
           ))

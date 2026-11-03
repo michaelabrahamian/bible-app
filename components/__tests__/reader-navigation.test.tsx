@@ -1,7 +1,7 @@
 import { beforeEach, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { StyleSheet, Text, TouchableOpacity, Dimensions } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, Dimensions, ScrollView } from "react-native";
 import type { ReactNode } from "react";
 import { GestureHandlerRootView, State } from "react-native-gesture-handler";
 import {
@@ -176,7 +176,7 @@ test("the reader applies a requested book only when focused, and never replays i
       JSON.parse((await AsyncStorage.getItem(READER_STORAGE_KEY))!),
     ).toMatchObject({ currentBookName: "Exodus", currentChapter: 1 }),
   );
-  expect(router.setParams).toHaveBeenCalledWith({ book: undefined });
+  expect(router.setParams).toHaveBeenCalledWith({ book: undefined, chapter: undefined, verse: undefined });
   await swipe(-120);
   jest.mocked(useIsFocused).mockReturnValue(false);
   await screen.rerender(
@@ -193,6 +193,55 @@ test("the reader applies a requested book only when focused, and never replays i
   expect(
     screen.getByRole("button", { name: "Choose passage: Exodus 2" }),
   ).toBeTruthy();
+});
+
+test.each(["single", "side-by-side", "stacked"])(
+  "widget links select and reveal the exact verse in %s reading",
+  async (layout) => {
+    const scrollTo = jest.spyOn(ScrollView.prototype, "scrollTo").mockImplementation(() => {});
+    try {
+      jest.mocked(useLocalSearchParams).mockReturnValue({ book: "John", chapter: "3", verse: "16" });
+      const screen = await reader({ showDualView: layout !== "single", comparisonLayout: layout === "stacked" ? "stacked" : "side-by-side" });
+      expect(screen.getByRole("button", { name: "Choose passage: John 3" })).toBeTruthy();
+      expect(router.setParams).toHaveBeenCalledWith({ book: undefined, chapter: undefined, verse: undefined });
+      const scroll = screen.getByTestId(layout === "side-by-side" ? "parallel-chapter-scroll" : "chapter-scroll-kjv");
+      const verse = screen.getByTestId(layout === "side-by-side" ? "parallel-verse-16" : "chapter-kjv-verse-16");
+      await fireEvent(scroll, "layout", { nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 300 } } });
+      await fireEvent(scroll, "contentSizeChange", 320, 2000);
+      await fireEvent(verse, "layout", { nativeEvent: { layout: { x: 0, y: 1000, width: 320, height: 100 } } });
+      expect(scrollTo).toHaveBeenCalledWith({ y: 900, animated: false });
+      await screen.unmount();
+    } finally {
+      scrollTo.mockRestore();
+    }
+  },
+);
+
+test("invalid widget links preserve the saved passage", async () => {
+  jest.mocked(useLocalSearchParams).mockReturnValue({ book: "John", chapter: "3", verse: "999" });
+  const screen = await reader({ currentBookName: "Romans", currentChapter: 8 });
+  expect(screen.getByRole("button", { name: "Choose passage: Romans 8" })).toBeTruthy();
+});
+
+test("a widget can refocus the already-open verse, and highlight expiry preserves the scroll view", async () => {
+  jest.useFakeTimers();
+  try {
+    jest.mocked(useLocalSearchParams).mockReturnValue({ book: "John", chapter: "3", verse: "16" });
+    const screen = await reader({ currentBookName: "John", currentChapter: 3 });
+    const original = screen.getByTestId("chapter-scroll-kjv");
+    await act(() => jest.advanceTimersByTime(5001));
+    expect(screen.getByTestId("chapter-scroll-kjv")).toBe(original);
+
+    jest.mocked(useLocalSearchParams).mockReturnValue({});
+    await screen.rerender(<TestProviders><ReadyReader /></TestProviders>);
+    jest.mocked(useLocalSearchParams).mockReturnValue({ book: "John", chapter: "3", verse: "16" });
+    await screen.rerender(<TestProviders><ReadyReader /></TestProviders>);
+    expect(screen.getByTestId("chapter-scroll-kjv")).not.toBe(original);
+    expect(screen.getByRole("button", { name: "Choose passage: John 3" })).toBeTruthy();
+    await screen.unmount();
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("the persistent Bible tab can reopen the same library book at its first chapter", async () => {

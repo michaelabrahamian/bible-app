@@ -1,0 +1,180 @@
+{
+  "epoch": "2026-01-01",
+  "references": [
+    {
+      "book": "I Thessalonians",
+      "armenianSource": "1ts",
+      "armenianBookLabel": "Ա Թես.",
+      "chapter": 5,
+      "verse": 16
+    },
+    {
+      "book": "I Thessalonians",
+      "armenianSource": "1ts",
+      "armenianBookLabel": "Ա Թես.",
+      "chapter": 5,
+      "verse": 17
+    },
+    {
+      "book": "I Corinthians",
+      "armenianSource": "1co",
+      "armenianBookLabel": "Ա Կորնթ.",
+      "chapter": 16,
+      "verse": 14
+    },
+    {
+      "book": "Philippians",
+      "armenianSource": "fp",
+      "armenianBookLabel": "Փիլիպ.",
+      "chapter": 4,
+      "verse": 4
+    },
+    {
+      "book": "Philippians",
+      "armenianSource": "fp",
+      "armenianBookLabel": "Փիլիպ.",
+      "chapter": 4,
+      "verse": 13
+    },
+    {
+      "book": "I John",
+      "armenianSource": "1jo",
+      "armenianBookLabel": "Ա Հովհ.",
+      "chapter": 4,
+      "verse": 8
+    },
+    {
+      "book": "I John",
+      "armenianSource": "1jo",
+      "armenianBookLabel": "Ա Հովհ.",
+      "chapter": 4,
+      "verse": 19
+    },
+    {
+      "book": "I Peter",
+      "armenianSource": "1pe",
+      "armenianBookLabel": "Ա Պետ.",
+      "chapter": 5,
+      "verse": 7
+    },
+    {
+      "book": "Matthew",
+      "armenianSource": "mt",
+      "armenianBookLabel": "Մատթ.",
+      "chapter": 5,
+      "verse": 8
+    },
+    {
+      "book": "Matthew",
+      "armenianSource": "mt",
+      "armenianBookLabel": "Մատթ.",
+      "chapter": 5,
+      "verse": 9
+    },
+    {
+      "book": "Matthew",
+      "armenianSource": "mt",
+      "armenianBookLabel": "Մատթ.",
+      "chapter": 5,
+      "verse": 14
+    },
+    {
+      "book": "Matthew",
+      "armenianSource": "mt",
+      "armenianBookLabel": "Մատթ.",
+      "chapter": 6,
+      "verse": 21
+    },
+    {
+      "book": "Matthew",
+      "armenianSource": "mt",
+      "armenianBookLabel": "Մատթ.",
+      "chapter": 7,
+      "verse": 7
+    },
+    {
+      "book": "Matthew",
+      "armenianSource": "mt",
+      "armenianBookLabel": "Մատթ.",
+      "chapter": 11,
+      "verse": 28
+    },
+    {
+      "book": "John",
+      "armenianSource": "jo",
+      "armenianBookLabel": "Հովհ.",
+      "chapter": 15,
+      "verse": 12
+    },
+    {
+      "book": "John",
+      "armenianSource": "jo",
+      "armenianBookLabel": "Հովհ.",
+      "chapter": 15,
+      "verse": 13
+    },
+    {
+      "book": "Romans",
+      "armenianSource": "rm",
+      "armenianBookLabel": "Հռոմ.",
+      "chapter": 8,
+      "verse": 31
+    },
+    {
+      "book": "Romans",
+      "armenianSource": "rm",
+      "armenianBookLabel": "Հռոմ.",
+      "chapter": 12,
+      "verse": 12
+    },
+    {
+      "book": "Romans",
+      "armenianSource": "rm",
+      "armenianBookLabel": "Հռոմ.",
+      "chapter": 12,
+      "verse": 21
+    },
+    {
+      "book": "II Corinthians",
+      "armenianSource": "2co",
+      "armenianBookLabel": "Բ Կորնթ.",
+      "chapter": 5,
+      "verse": 7
+    },
+    {
+      "book": "Colossians",
+      "armenianSource": "cl",
+      "armenianBookLabel": "Կող.",
+      "chapter": 3,
+      "verse": 2
+    },
+    {
+      "book": "Colossians",
+      "armenianSource": "cl",
+      "armenianBookLabel": "Կող.",
+      "chapter": 3,
+      "verse": 14
+    },
+    {
+      "book": "Hebrews",
+      "armenianSource": "hb",
+      "armenianBookLabel": "Եբր.",
+      "chapter": 13,
+      "verse": 8
+    },
+    {
+      "book": "James",
+      "armenianSource": "tg",
+      "armenianBookLabel": "Հակ.",
+      "chapter": 1,
+      "verse": 22
+    },
+    {
+      "book": "II Timothy",
+      "armenianSource": "2tm",
+      "armenianBookLabel": "Բ Տիմ.",
+      "chapter": 1,
+      "verse": 7
+    }
+  ]
+}
