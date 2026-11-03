@@ -10,6 +10,7 @@ import {
   useAppearance,
 } from "@/contexts/appearance-context";
 import { ActivityIndicator } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -17,11 +18,13 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   return (
-    <AppearanceProvider>
-      <BibleProvider>
-        <ReaderNavigation />
-      </BibleProvider>
-    </AppearanceProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppearanceProvider>
+        <BibleProvider>
+          <ReaderNavigation />
+        </BibleProvider>
+      </AppearanceProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -60,12 +63,18 @@ function ReaderNavigation() {
       }}
     >
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(tabs)"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
         <Stack.Screen
           name="modal"
           options={{ presentation: "modal", title: "Modal" }}
         />
-        <Stack.Screen name="reader" options={{ title: "Bible Reader" }} />
+        <Stack.Screen
+          name="reader"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
         <Stack.Screen
           name="licences"
           options={{ title: "Text sources & licences" }}

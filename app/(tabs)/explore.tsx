@@ -1,14 +1,11 @@
+import { ReadingAppearanceControls } from "@/components/reading-appearance-controls";
 import { ContentNotice } from "@/components/content-notice";
 import { ThemedText } from "@/components/themed-text";
 import { TranslationSelect } from "@/components/translation-select";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { ThemePalettes, type ThemeId } from "@/constants/theme";
-import {
-  useAppearance,
-  type AppearanceMode,
-} from "@/contexts/appearance-context";
+import { supportsLiquidGlass } from "@/constants/navigation";
 import { useBible } from "@/contexts/bible-context";
-import { useAppColorScheme, useAppTheme } from "@/hooks/use-app-theme";
+import { useAppTheme } from "@/hooks/use-app-theme";
 import {
   ScrollView,
   Platform,
@@ -17,14 +14,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { router } from "expo-router";
-
-const appearanceModes: { id: AppearanceMode; name: string }[] = [
-  { id: "system", name: "System" },
-  { id: "light", name: "Light" },
-  { id: "dark", name: "Dark" },
-];
 
 export default function SettingsScreen() {
   const {
@@ -38,10 +32,9 @@ export default function SettingsScreen() {
     setComparisonLayout,
     getVersions,
   } = useBible();
-  const { themeId, appearance, setThemeId, setAppearance } = useAppearance();
   const colors = useAppTheme();
-  const scheme = useAppColorScheme();
   const insets = useSafeAreaInsets();
+  const nativeTabs = supportsLiquidGlass();
   const versions = getVersions();
   const notice = versions.find(({ notice }) => Boolean(notice))?.notice;
   const parallelEnabled = Boolean(secondaryVersion) && showDualView;
@@ -54,12 +47,19 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={nativeTabs ? [] : ["left", "right"]}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 28 },
+          {
+            paddingTop: (nativeTabs ? 0 : insets.top) + 28,
+            paddingBottom: 32,
+          },
         ]}
+        contentInsetAdjustmentBehavior={nativeTabs ? "automatic" : "never"}
       >
         <View style={styles.header}>
           <ThemedText style={[styles.eyebrow, { color: colors.tint }]}>
@@ -198,102 +198,7 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
-          <ThemedText
-            style={[styles.sectionLabel, { color: colors.secondaryText }]}
-          >
-            COLOUR THEME
-          </ThemedText>
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Colour theme"
-            style={styles.themeOptions}
-          >
-            {(Object.keys(ThemePalettes) as ThemeId[]).map((id) => {
-              const palette = ThemePalettes[id];
-              const selected = id === themeId;
-              return (
-                <TouchableOpacity
-                  key={id}
-                  accessibilityRole="radio"
-                  aria-checked={selected}
-                  accessibilityLabel={`${palette.name} theme`}
-                  accessibilityState={{ checked: selected }}
-                  onPress={() => setThemeId(id)}
-                  style={[
-                    styles.themeOption,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: selected ? colors.tint : colors.border,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.swatch,
-                      { backgroundColor: palette.colors[scheme].hero },
-                    ]}
-                  >
-                    {selected && (
-                      <IconSymbol
-                        name="checkmark"
-                        size={16}
-                        color={palette.colors[scheme].heroText}
-                      />
-                    )}
-                  </View>
-                  <ThemedText style={styles.themeName}>
-                    {palette.name}
-                  </ThemedText>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-        <View style={styles.section}>
-          <ThemedText
-            style={[styles.sectionLabel, { color: colors.secondaryText }]}
-          >
-            APPEARANCE
-          </ThemedText>
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Appearance"
-            style={[
-              styles.appearanceOptions,
-              { backgroundColor: colors.surfaceMuted },
-            ]}
-          >
-            {appearanceModes.map((mode) => (
-              <TouchableOpacity
-                key={mode.id}
-                accessibilityRole="radio"
-                aria-checked={appearance === mode.id}
-                accessibilityLabel={`${mode.name} appearance`}
-                accessibilityState={{ checked: appearance === mode.id }}
-                onPress={() => setAppearance(mode.id)}
-                style={[
-                  styles.appearanceOption,
-                  appearance === mode.id && { backgroundColor: colors.surface },
-                ]}
-              >
-                <ThemedText
-                  style={[
-                    styles.appearanceName,
-                    {
-                      color:
-                        appearance === mode.id
-                          ? colors.text
-                          : colors.secondaryText,
-                    },
-                  ]}
-                >
-                  {mode.name}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <ReadingAppearanceControls />
         {notice && <ContentNotice text={notice} />}
         <View
           style={[
@@ -330,11 +235,11 @@ export default function SettingsScreen() {
           <ThemedText
             style={[styles.privacyText, { color: colors.secondaryText }]}
           >
-            Your reading choices and theme are saved on this device.
+            Your reading choices, text size and theme are saved on this device.
           </ThemedText>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -391,42 +296,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   layoutOptionTitle: { fontSize: 13, lineHeight: 20, fontWeight: "500" },
-  themeOptions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  themeOption: {
-    flexGrow: 1,
-    flexBasis: "22%",
-    minWidth: 56,
-    paddingVertical: 12,
-    paddingHorizontal: 5,
-    gap: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 16,
-  },
-  swatch: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  themeName: { fontSize: 11, lineHeight: 18 },
-  appearanceOptions: {
-    flexDirection: "row",
-    padding: 4,
-    borderRadius: 15,
-    gap: 4,
-  },
-  appearanceOption: {
-    flex: 1,
-    minHeight: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 11,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-  },
-  appearanceName: { fontSize: 13, lineHeight: 20, fontWeight: "500" },
   licensingCard: { borderWidth: 1, borderRadius: 20, padding: 18, gap: 10 },
   licensingText: { fontSize: 13, lineHeight: 21 },
   licensingLink: {

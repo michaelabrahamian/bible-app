@@ -1,0 +1,47 @@
+import { afterEach, expect, jest, test } from "@jest/globals";
+import { Platform } from "react-native";
+import {
+  isGlassEffectAPIAvailable,
+  isLiquidGlassAvailable,
+} from "expo-glass-effect";
+import { supportsLiquidGlass } from "@/constants/navigation";
+
+jest.mock("expo-glass-effect", () => ({
+  isLiquidGlassAvailable: jest.fn(),
+  isGlassEffectAPIAvailable: jest.fn(),
+}));
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
+test.each(["android", "web"] as const)(
+  "%s keeps docked tabs without querying native glass APIs",
+  (os) => {
+    jest.replaceProperty(Platform, "OS", os);
+    expect(supportsLiquidGlass()).toBe(false);
+    expect(isLiquidGlassAvailable).not.toHaveBeenCalled();
+    expect(isGlassEffectAPIAvailable).not.toHaveBeenCalled();
+  },
+);
+
+test.each([
+  [false, true],
+  [true, false],
+  [false, false],
+])(
+  "iOS keeps docked tabs if either glass capability is unavailable (%s, %s)",
+  (liquid, api) => {
+    jest.replaceProperty(Platform, "OS", "ios");
+    jest.mocked(isLiquidGlassAvailable).mockReturnValue(liquid);
+    jest.mocked(isGlassEffectAPIAvailable).mockReturnValue(api);
+    expect(supportsLiquidGlass()).toBe(false);
+  },
+);
+
+test("supported iOS uses the system native tabs", () => {
+  jest.replaceProperty(Platform, "OS", "ios");
+  jest.mocked(isLiquidGlassAvailable).mockReturnValue(true);
+  jest.mocked(isGlassEffectAPIAvailable).mockReturnValue(true);
+  expect(supportsLiquidGlass()).toBe(true);
+});

@@ -41,6 +41,7 @@ const MAPPING = {
   "rectangle.split.2x1": "view-column",
   "rectangle.split.1x2": "view-agenda",
   "chevron.down": "expand-more",
+  "slider.horizontal.3": "tune",
   lock: "lock-outline",
 } satisfies IconMapping;
 

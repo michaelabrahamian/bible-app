@@ -1,4 +1,5 @@
 import * as BibleService from "@/services/bible-service";
+import { getAdjacentPassage } from "@/utils/reader-navigation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
@@ -29,6 +30,8 @@ interface BibleContextType extends ReaderState {
   setSecondaryVersion: (versionId: string | null) => void;
   setCurrentBook: (bookIndex: number) => void;
   setCurrentChapter: (chapter: number) => void;
+  setPassage: (bookName: string, chapter: number) => void;
+  moveChapter: (direction: -1 | 1) => void;
   toggleDualView: () => void;
   setComparisonLayout: (layout: ReaderState["comparisonLayout"]) => void;
   setSinglePane: (pane: ReaderState["singlePane"]) => void;
@@ -238,6 +241,39 @@ export function BibleProvider({ children }: { children: ReactNode }) {
           setState((previous) =>
             normalizeState({ ...previous, currentChapter }),
           ),
+        setPassage: (bookName, chapter) =>
+          setState((previous) => {
+            const version = navigationVersion(previous);
+            const index = BibleService.getBooks(version).findIndex(
+              (book) => book.name === bookName,
+            );
+            if (
+              index < 0 ||
+              !BibleService.getChapterNumbers(version, index).includes(chapter)
+            )
+              return previous;
+            return normalizeState({
+              ...previous,
+              currentBookName: bookName,
+              currentChapter: chapter,
+            });
+          }),
+        moveChapter: (direction) =>
+          setState((previous) => {
+            const passage = getAdjacentPassage(
+              BibleService.getBooks(navigationVersion(previous)),
+              previous.currentBookName,
+              previous.currentChapter,
+              direction,
+            );
+            return passage
+              ? normalizeState({
+                  ...previous,
+                  currentBookName: passage.bookName,
+                  currentChapter: passage.chapter,
+                })
+              : previous;
+          }),
         toggleDualView: () =>
           setState((previous) =>
             normalizeState({

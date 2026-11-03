@@ -107,6 +107,24 @@ test("preserves book identity when switching around missing NEB books", async ()
   expect(result.current.getCurrentBookName()).toBe("Acts");
 });
 
+test("queued chapter moves use the latest passage across book boundaries", async () => {
+  const { result } = await renderHook(useBible, { wrapper: BibleProvider });
+  await waitFor(() => expect(result.current.isReady).toBe(true));
+  await act(async () => {
+    result.current.setPassage("Genesis", 49);
+    result.current.moveChapter(1);
+    result.current.moveChapter(1);
+  });
+  expect(result.current.getCurrentBookName()).toBe("Exodus");
+  expect(result.current.currentChapter).toBe(1);
+  await act(async () => {
+    result.current.setPassage("Missing book", 1);
+    result.current.setPassage("Genesis", 999);
+  });
+  expect(result.current.getCurrentBookName()).toBe("Exodus");
+  expect(result.current.currentChapter).toBe(1);
+});
+
 test("NEB has all 27 NT books and explicitly missing or withheld OT books", () => {
   const names = BibleService.getBooks("neb").map(({ name }) => name);
   expect(names).toHaveLength(63);
