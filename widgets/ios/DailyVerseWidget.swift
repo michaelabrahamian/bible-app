@@ -1,5 +1,50 @@
 import SwiftUI
 import WidgetKit
+import AppIntents
+
+enum DailyVerseBackground: String, AppEnum {
+  case system, forest, ocean, clay, plum, white, cream, black, grey
+
+  static var typeDisplayRepresentation: TypeDisplayRepresentation = "Background"
+  static var caseDisplayRepresentations: [DailyVerseBackground: DisplayRepresentation] = [
+    .system: "System", .forest: "Forest", .ocean: "Ocean", .clay: "Clay",
+    .plum: "Plum", .white: "White", .cream: "Cream", .black: "Black", .grey: "Grey"
+  ]
+
+  func colors(isDark: Bool) -> (background: Color, foreground: Color) {
+    switch self {
+    case .system:
+      // Preserve the original widget's adaptive forest appearance by default.
+      return isDark
+        ? (Color(hex: 0x1D2922), Color(hex: 0xE9EEE5))
+        : (Color(hex: 0xF7F6F2), Color(hex: 0x243B32))
+    case .forest: return (Color(hex: 0x244B3A), Color(hex: 0xF8F7ED))
+    case .ocean: return (Color(hex: 0x23465D), Color(hex: 0xF5F8FC))
+    case .clay: return (Color(hex: 0x764833), Color(hex: 0xFFF7F1))
+    case .plum: return (Color(hex: 0x593C60), Color(hex: 0xFBF5FB))
+    case .white: return (Color(hex: 0xFFFFFF), Color(hex: 0x202421))
+    case .cream: return (Color(hex: 0xF7F2E5), Color(hex: 0x3E3528))
+    case .black: return (Color(hex: 0x111111), Color(hex: 0xF4F4EF))
+    case .grey: return (Color(hex: 0xE5E5E3), Color(hex: 0x252825))
+    }
+  }
+}
+
+private extension Color {
+  init(hex: UInt32) {
+    self.init(.sRGB, red: Double((hex >> 16) & 255) / 255,
+              green: Double((hex >> 8) & 255) / 255,
+              blue: Double(hex & 255) / 255, opacity: 1)
+  }
+}
+
+struct DailyVerseConfiguration: WidgetConfigurationIntent {
+  static var title: LocalizedStringResource = "Daily Bible Verse"
+  static var description: IntentDescription = "Choose the background for this widget."
+
+  @Parameter(title: "Background", default: .system)
+  var background: DailyVerseBackground
+}
 
 struct DailyVerse: Decodable {
   let reference: String
@@ -11,25 +56,28 @@ struct DailyVerse: Decodable {
 
 struct DailyVerseEntry: TimelineEntry {
   let date: Date
+  var background: DailyVerseBackground = .system
   var verse: DailyVerse {
     dailyVerses[DailyVerseCalendar.index(for: date, count: dailyVerses.count)]
   }
 }
 
-struct DailyVerseProvider: TimelineProvider {
+struct DailyVerseProvider: AppIntentTimelineProvider {
   func placeholder(in context: Context) -> DailyVerseEntry {
     DailyVerseEntry(date: Date())
   }
 
-  func getSnapshot(in context: Context, completion: @escaping (DailyVerseEntry) -> Void) {
-    completion(DailyVerseEntry(date: Date()))
+  func snapshot(for configuration: DailyVerseConfiguration, in context: Context) async -> DailyVerseEntry {
+    DailyVerseEntry(date: Date(), background: configuration.background)
   }
 
-  func getTimeline(in context: Context, completion: @escaping (Timeline<DailyVerseEntry>) -> Void) {
+  func timeline(for configuration: DailyVerseConfiguration, in context: Context) async -> Timeline<DailyVerseEntry> {
     // Rebuild in the extension itself: no background app, server, or finite
     // app-authored schedule to run out of entries. Calendar math respects DST.
-    let entries = DailyVerseCalendar.dates(from: Date()).map { DailyVerseEntry(date: $0) }
-    completion(Timeline(entries: entries, policy: .atEnd))
+    let entries = DailyVerseCalendar.dates(from: Date()).map {
+      DailyVerseEntry(date: $0, background: configuration.background)
+    }
+    return Timeline(entries: entries, policy: .atEnd)
   }
 }
 
@@ -41,14 +89,10 @@ struct DailyVerseView: View {
   private var small: Bool { family == .systemSmall }
   private var large: Bool { family == .systemLarge }
   private var background: Color {
-    colorScheme == .dark
-      ? Color(red: 0.114, green: 0.161, blue: 0.133)
-      : Color(red: 0.969, green: 0.965, blue: 0.949)
+    entry.background.colors(isDark: colorScheme == .dark).background
   }
   private var foreground: Color {
-    colorScheme == .dark
-      ? Color(red: 0.914, green: 0.933, blue: 0.898)
-      : Color(red: 0.141, green: 0.231, blue: 0.196)
+    entry.background.colors(isDark: colorScheme == .dark).foreground
   }
 
   var body: some View {
@@ -89,7 +133,7 @@ struct DailyVerseView: View {
 @main
 struct DailyVerseWidget: Widget {
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: "DailyVerseWidget", provider: DailyVerseProvider()) { entry in
+    AppIntentConfiguration(kind: "DailyVerseWidget", intent: DailyVerseConfiguration.self, provider: DailyVerseProvider()) { entry in
       DailyVerseView(entry: entry)
     }
     .configurationDisplayName("Daily Bible Verse")
