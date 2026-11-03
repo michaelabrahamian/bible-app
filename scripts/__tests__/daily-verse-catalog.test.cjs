@@ -5,6 +5,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { Buffer } = require('node:buffer');
+const plist = require('@expo/plist').default;
 const { buildDailyVerseCatalog } = require('../lib/daily-verse-catalog.cjs');
 const { writeWidgetFiles } = require('../../plugins/with-daily-verse-widget.cjs');
 const root = path.resolve(__dirname, '../..');
@@ -27,11 +28,17 @@ test('every daily verse is short, complete, unique and links to the same referen
 test('native generation preserves Armenian Unicode and source strings exactly', () => {
   const ios = fs.mkdtempSync(path.join(os.tmpdir(), 'bible-widget-test-'));
   try {
-    writeWidgetFiles(root, ios);
+    writeWidgetFiles(root, ios, 'group.test.bible.widgets');
+    const info = plist.parse(fs.readFileSync(path.join(ios, 'DailyVerseWidget/Info.plist'), 'utf8'));
+    const entitlements = plist.parse(fs.readFileSync(path.join(ios, 'DailyVerseWidget/DailyVerseWidget.entitlements'), 'utf8'));
+    assert.equal(info.BibleWidgetAppGroupIdentifier, 'group.test.bible.widgets');
+    assert.deepEqual(entitlements['com.apple.security.application-groups'], ['group.test.bible.widgets']);
+    assert.equal(fs.readFileSync(path.join(ios, 'DailyVerseWidget/SharedWidgetAppearance.swift'), 'utf8'),
+      fs.readFileSync(path.join(root, 'modules/bible-widget-appearance/ios/SharedWidgetAppearance.swift'), 'utf8'));
     const generated = fs.readFileSync(path.join(ios, 'DailyVerseWidget/GeneratedDailyVerses.swift'), 'utf8');
     const base64 = generated.match(/base64Encoded: "([A-Za-z0-9+/=]+)"/)[1];
     assert.deepEqual(JSON.parse(Buffer.from(base64, 'base64').toString('utf8')), buildDailyVerseCatalog(root).verses);
-    writeWidgetFiles(root, ios);
+    writeWidgetFiles(root, ios, 'group.test.bible.widgets');
     assert.equal(fs.readFileSync(path.join(ios, 'DailyVerseWidget/GeneratedDailyVerses.swift'), 'utf8'), generated);
   } finally {
     fs.rmSync(ios, { recursive: true, force: true });

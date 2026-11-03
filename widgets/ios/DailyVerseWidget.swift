@@ -3,16 +3,21 @@ import WidgetKit
 import AppIntents
 
 enum DailyVerseBackground: String, AppEnum {
-  case system, forest, ocean, clay, plum, white, cream, black, grey
+  case matchApp, system, forest, ocean, clay, plum, white, cream, black, grey
 
   static var typeDisplayRepresentation: TypeDisplayRepresentation = "Background"
   static var caseDisplayRepresentations: [DailyVerseBackground: DisplayRepresentation] = [
-    .system: "System", .forest: "Forest", .ocean: "Ocean", .clay: "Clay",
+    .matchApp: "Match App", .system: "System", .forest: "Forest", .ocean: "Ocean", .clay: "Clay",
     .plum: "Plum", .white: "White", .cream: "Cream", .black: "Black", .grey: "Grey"
   ]
 
-  func colors(isDark: Bool) -> (background: Color, foreground: Color) {
+  func colors(isDark: Bool, appAppearance: SharedWidgetAppearance?) -> (background: Color, foreground: Color) {
     switch self {
+    case .matchApp:
+      guard let appAppearance else { return DailyVerseBackground.system.colors(isDark: isDark, appAppearance: nil) }
+      let colors = appAppearance.colors(isDark: isDark)
+      return (Color(hex: UInt32(colors.background.dropFirst(), radix: 16)!),
+              Color(hex: UInt32(colors.foreground.dropFirst(), radix: 16)!))
     case .system:
       // Preserve the original widget's adaptive forest appearance by default.
       return isDark
@@ -42,7 +47,7 @@ struct DailyVerseConfiguration: WidgetConfigurationIntent {
   static var title: LocalizedStringResource = "Daily Bible Verse"
   static var description: IntentDescription = "Choose the background for this widget."
 
-  @Parameter(title: "Background", default: .system)
+  @Parameter(title: "Background", default: .matchApp)
   var background: DailyVerseBackground
 }
 
@@ -56,7 +61,8 @@ struct DailyVerse: Decodable {
 
 struct DailyVerseEntry: TimelineEntry {
   let date: Date
-  var background: DailyVerseBackground = .system
+  var background: DailyVerseBackground = .matchApp
+  var appAppearance: SharedWidgetAppearance? = SharedWidgetAppearance.load()
   var verse: DailyVerse {
     dailyVerses[DailyVerseCalendar.index(for: date, count: dailyVerses.count)]
   }
@@ -74,8 +80,9 @@ struct DailyVerseProvider: AppIntentTimelineProvider {
   func timeline(for configuration: DailyVerseConfiguration, in context: Context) async -> Timeline<DailyVerseEntry> {
     // Rebuild in the extension itself: no background app, server, or finite
     // app-authored schedule to run out of entries. Calendar math respects DST.
+    let appearance = SharedWidgetAppearance.load()
     let entries = DailyVerseCalendar.dates(from: Date()).map {
-      DailyVerseEntry(date: $0, background: configuration.background)
+      DailyVerseEntry(date: $0, background: configuration.background, appAppearance: appearance)
     }
     return Timeline(entries: entries, policy: .atEnd)
   }
@@ -89,10 +96,10 @@ struct DailyVerseView: View {
   private var small: Bool { family == .systemSmall }
   private var large: Bool { family == .systemLarge }
   private var background: Color {
-    entry.background.colors(isDark: colorScheme == .dark).background
+    entry.background.colors(isDark: colorScheme == .dark, appAppearance: entry.appAppearance).background
   }
   private var foreground: Color {
-    entry.background.colors(isDark: colorScheme == .dark).foreground
+    entry.background.colors(isDark: colorScheme == .dark, appAppearance: entry.appAppearance).foreground
   }
 
   var body: some View {
