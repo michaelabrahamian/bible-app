@@ -3,7 +3,7 @@ import type { LayoutChangeEvent, ScrollView } from "react-native";
 
 type ScrollTarget = Pick<ComponentRef<typeof ScrollView>, "scrollTo">;
 
-export function useScrollToSelection() {
+export function useScrollToSelection(enabled = true) {
   const node = useRef<ScrollTarget | null>(null);
   const lastNode = useRef<ScrollTarget | null>(null);
   const measurements = useRef({
@@ -14,14 +14,14 @@ export function useScrollToSelection() {
   const reveal = useCallback(() => {
     const { viewport, content, selection } = measurements.current;
     // Native layout and content-size events can arrive in either order.
-    if (!node.current || !viewport || !content || !selection) return;
+    if (!enabled || !node.current || !viewport || !content || !selection) return;
     const centered =
       selection.y - Math.max(0, (viewport - selection.height) / 2);
     node.current.scrollTo({
       y: Math.max(0, Math.min(centered, Math.max(0, content - viewport))),
       animated: false,
     });
-  }, []);
+  }, [enabled]);
 
   const attach = useCallback(
     (view: ScrollTarget | null) => {
