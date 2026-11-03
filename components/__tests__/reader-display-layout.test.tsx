@@ -1,6 +1,7 @@
 import { expect, test } from "@jest/globals";
 import {
   getReaderDisplaySplit,
+  getReaderHorizontalPadding,
   type DisplayRegion,
 } from "@/utils/reader-display-layout";
 
@@ -31,6 +32,21 @@ test("honours asymmetric safe-area padding on each side independently", () => {
   expect(
     layout([{ x: 400, y: 0, width: 0, height: 600 }], { left: 76, right: 24 }),
   ).toEqual({ axis: "vertical", primary: 312, secondary: 364, gap: 24 });
+});
+
+test("the native side dock gets less extra spacing without entering its reserved area", () => {
+  expect(getReaderHorizontalPadding({ left: 0, right: 84 }, true)).toEqual({
+    left: 16,
+    right: 88,
+  });
+  expect(getReaderHorizontalPadding({ left: 84, right: 0 }, true)).toEqual({
+    left: 88,
+    right: 16,
+  });
+  expect(getReaderHorizontalPadding({ left: 0, right: 84 }, false)).toEqual({
+    left: 16,
+    right: 100,
+  });
 });
 
 test("a rotated horizontal fold divides the local reading height around its gutter", () => {

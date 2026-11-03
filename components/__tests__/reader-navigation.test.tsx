@@ -362,6 +362,66 @@ test("an opened dual display puts translations on opposite sides of the fold wit
   }
 });
 
+test("closing the Duo reflows both translations immediately using the reader size, without changing chapter", async () => {
+  const screen = await reader({
+    showDualView: true,
+    comparisonLayout: "side-by-side",
+    currentBookName: "John",
+    currentChapter: 4,
+  });
+  const resize = (width: number, height: number) =>
+    fireEvent(screen.getByTestId("reader-viewport"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width, height } },
+    });
+  const columnWidth = (version: string) =>
+    StyleSheet.flatten(screen.getByTestId(`parallel-header-${version}`).props.style)
+      .width;
+
+  // Neither the dock-reduced reader nor the new front screen need match the
+  // global Dimensions value. Native fold events may arrive after layout.
+  await resize(800, 600);
+  await fireEvent(screen.getByTestId("display-regions"), "regionsChange", {
+    nativeEvent: {
+      width: 800,
+      height: 600,
+      divisions: [{ x: 400, y: 0, width: 0, height: 600 }],
+    },
+  });
+  expect(columnWidth("kjv")).toBe(371);
+  expect(columnWidth("neb")).toBe(371);
+  expect(screen.queryByTestId("parallel-divider", { includeHiddenElements: true })).toBeNull();
+
+  await resize(466, 520);
+  expect(columnWidth("kjv")).toBe(216);
+  expect(columnWidth("neb")).toBe(216);
+  expect(
+    StyleSheet.flatten(screen.getByTestId("parallel-neb-verse-1").props.style)
+      .width,
+  ).toBe(216);
+  expect(screen.getByTestId("parallel-divider", { includeHiddenElements: true })).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Choose passage: John 4" }),
+  ).toBeTruthy();
+
+  await fireEvent(screen.getByTestId("display-regions"), "regionsChange", {
+    nativeEvent: { width: 466, height: 520, divisions: [] },
+  });
+  expect(columnWidth("kjv")).toBe(216);
+
+  // Reopening reinstates the fold only when its geometry matches this reader.
+  await resize(800, 600);
+  expect(screen.getByTestId("parallel-divider", { includeHiddenElements: true })).toBeTruthy();
+  await fireEvent(screen.getByTestId("display-regions"), "regionsChange", {
+    nativeEvent: {
+      width: 800,
+      height: 600,
+      divisions: [{ x: 400, y: 0, width: 0, height: 600 }],
+    },
+  });
+  expect(columnWidth("kjv")).toBe(371);
+  expect(screen.queryByTestId("parallel-divider", { includeHiddenElements: true })).toBeNull();
+});
+
 test("a rotated fold uses two linked panes while single-translation reading remains available", async () => {
   const screen = await reader({
     showDualView: true,

@@ -32,6 +32,11 @@ final class BibleDisplayRegionsView: ExpoView {
     setNeedsLayout()
   }
 
+  override func safeAreaInsetsDidChange() {
+    super.safeAreaInsetsDidChange()
+    setNeedsLayout()
+  }
+
   override func layoutSubviews() {
     super.layoutSubviews()
     guard window != nil else { return }
@@ -44,7 +49,8 @@ final class BibleDisplayRegionsView: ExpoView {
       }
     }
     let payload: [String: Any] = [
-      "width": bounds.width, "height": bounds.height, "divisions": divisions
+      "width": bounds.width, "height": bounds.height, "divisions": divisions,
+      "safeAreaInsets": ["left": safeAreaInsets.left, "right": safeAreaInsets.right]
     ]
     let value = payload as NSDictionary
     guard previous != value else { return }

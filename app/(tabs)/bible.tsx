@@ -8,6 +8,7 @@ import { PassagePicker } from "@/components/passage-picker";
 import { DisplayRegionsObserver } from "@/components/display-regions-observer";
 import {
   getReaderDisplaySplit,
+  getReaderHorizontalPadding,
   type ReaderDisplayRegions,
   type ReaderDisplaySplit,
 } from "@/utils/reader-display-layout";
@@ -98,14 +99,31 @@ export default function ReaderScreen() {
   const nativeTabs = supportsLiquidGlass();
   const ScreenContainer = nativeTabs ? NativeTabSafeAreaView : View;
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  const [readerSize, setReaderSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const width = readerSize?.width ?? windowWidth;
   const [displayRegions, setDisplayRegions] =
     useState<ReaderDisplayRegions | null>(null);
-  const outerPadding = { left: insets.left + 16, right: insets.right + 16 };
-  const displaySplit =
-    displayRegions && Math.abs(displayRegions.width - width) < 1
-      ? getReaderDisplaySplit(displayRegions, outerPadding)
+  // A native tab dock can make this view narrower than the window. Validate
+  // fold reports against the actual reader, including while changing displays.
+  const currentDisplay =
+    displayRegions &&
+    Math.abs(displayRegions.width - width) < 1 &&
+    (!readerSize || Math.abs(displayRegions.height - readerSize.height) < 1)
+      ? displayRegions
       : null;
+  const besideNativeDock =
+    nativeTabs &&
+    getReaderDisplaySplit(currentDisplay, { left: 16, right: 16 })?.axis ===
+      "vertical";
+  const outerPadding = getReaderHorizontalPadding(
+    currentDisplay?.safeAreaInsets ?? insets,
+    besideNativeDock,
+  );
+  const displaySplit = getReaderDisplaySplit(currentDisplay, outerPadding);
   const bookName = getCurrentBookName();
   const books = getBooks();
   const previousPassage = getAdjacentPassage(
@@ -288,6 +306,14 @@ export default function ReaderScreen() {
 
       <GestureDetector gesture={chapterSwipe} touchAction="pan-y">
         <View
+          testID="reader-viewport"
+          onLayout={({ nativeEvent: { layout } }) => {
+            setReaderSize((previous) =>
+              previous?.width === layout.width && previous.height === layout.height
+                ? previous
+                : { width: layout.width, height: layout.height },
+            );
+          }}
           style={[
             styles.readingArea,
             {
@@ -309,6 +335,7 @@ export default function ReaderScreen() {
           {sideBySide && secondaryVersion ? (
             <AlignedChapters
               split={verticalSplit}
+              contentWidth={width - outerPadding.left - outerPadding.right}
               key={`${primaryVersion}:${secondaryVersion}:${bookName}:${currentChapter}`}
               primary={{
                 chapter: getPrimaryChapter(),
@@ -448,17 +475,26 @@ function AlignedChapters({
   primary,
   secondary,
   split,
+  contentWidth,
 }: {
   primary: ReadingPane;
   secondary: ReadingPane;
   split: ReaderDisplaySplit | null;
+  contentWidth: number;
 }) {
   const colors = useAppTheme();
   const panes = [primary, secondary];
-  const columnSize = (index: number) =>
-    split
-      ? { flex: 0, width: (index === 0 ? split.primary : split.secondary) - 1 }
-      : undefined;
+  // Keep headers and verses explicitly constrained in both layouts, so closing
+  // the fold updates every column to the newly measured reader width.
+  const columnSize = (index: number) => ({
+    flex: 0,
+    width: Math.max(
+      0,
+      split
+        ? (index === 0 ? split.primary : split.secondary) - 1
+        : (contentWidth - 2) / 2,
+    ),
+  });
   const verses = panes.map(
     ({ chapter }) =>
       new Map(chapter?.verses.map((verse) => [verse.verse, verse])),

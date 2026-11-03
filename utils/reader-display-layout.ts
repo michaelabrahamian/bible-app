@@ -9,6 +9,19 @@ export interface ReaderDisplayRegions {
   width: number;
   height: number;
   divisions: DisplayRegion[];
+  safeAreaInsets?: { left: number; right: number };
+}
+
+export function getReaderHorizontalPadding(
+  insets: { left: number; right: number },
+  besideNativeDock: boolean,
+) {
+  // The native dock already reserves its own clearance. Keep only a small
+  // additional margin on that edge, while retaining normal outer spacing.
+  return {
+    left: insets.left + (besideNativeDock && insets.left > 0 ? 4 : 16),
+    right: insets.right + (besideNativeDock && insets.right > 0 ? 4 : 16),
+  };
 }
 
 export interface ReaderDisplaySplit {
