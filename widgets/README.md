@@ -1,9 +1,15 @@
 # Daily Bible verse widget
 
 The first native widget is for iOS 17+. Small widgets show Armenian; medium and
-large widgets stack Armenian above KJV English. The forest palette follows the
-system's light/dark appearance. It does not yet inherit the reader's selected
-theme or offer per-widget translation preferences.
+large widgets stack Armenian above KJV English. Long-press a widget and choose
+**Edit Widget → Background** to pick System, Forest, Ocean, Clay, Plum, White,
+Cream, Black or Grey. Each widget keeps its own choice. System preserves the
+original forest palette and follows the phone's light/dark appearance; the other
+options use a fixed background with matching readable text. The widget does not
+yet inherit the reader's selected theme or offer translation preferences.
+
+The Home Screen's tinted or clear appearance modes can override widget colours.
+Use the standard Home Screen appearance to see the selected background colours.
 
 Add **Daily Bible Verse** from the iPhone home-screen widget gallery after
 installing a native build. Expo Go and JavaScript-only updates cannot add this
